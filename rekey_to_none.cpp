@@ -296,7 +296,7 @@ int main(){
     psqlite3_key akey = (psqlite3_key)(SigScan("##558BEC566B751011837D1010740D6817020000E8")); // ok
     psqlite3_open aopen = (psqlite3_open)(SigScan("##558BEC6A006A06FF750CFF7508E8E0130200")); // ok
     psqlite3_exec aexec = (psqlite3_exec)(SigScan("##558BEC8B45088B40505DC3")); // ok
-    // psqlite3_key aimpl = (psqlite3_key)(SigScan("##558BEC83EC18568B750856E81207FFFF5985C07510"));// rekey line 17
+    // psqlite3_key aimpl = (psqlite3_key)(SigScan("##558BECFF7508E8D608FFFF5985C0750D687E010000"));// key line 17
     psqlite3_key arekey = (psqlite3_key)(SigScan("##558BEC837D1010740D682F020000E8")); // ok
     
     /*cout<<hex;

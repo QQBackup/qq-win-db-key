@@ -1,3 +1,5 @@
+print("别用！！！！！！！")
+print("必定损坏数据库！")
 print("理论上可能会损坏原数据库，慎用！如果要用请自行去除下一行的 exit()")
 exit()
 
@@ -67,26 +69,34 @@ const exec_function = single_function("##558BEC8B45088B40505DC3")
 // send(key_function)
 var name_function_caller = new NativeFunction(name_function, 'pointer', ['pointer', 'pointer']);
 var rekey_function_caller = new NativeFunction(rekey_function, 'int', ['pointer', 'pointer', 'int']);
+var key_function_caller = new NativeFunction(key_function, 'int', ['pointer', 'pointer', 'int']);
 var close_function_caller = new NativeFunction(close_function, 'int', ['pointer', 'int']);
 var exec_function_caller = new NativeFunction(exec_function, 'int', ['pointer', 'pointer', 'pointer', 'pointer', 'pointer']);
 var TARGET_KEY_LENGTH = 16;
 var key_length = 0;
 var dbName;
 var empty_password = Memory.alloc(TARGET_KEY_LENGTH)
+var original_password = Memory.alloc(TARGET_KEY_LENGTH)
 empty_password.writeByteArray(Array(TARGET_KEY_LENGTH).fill(0))
+const no_sync = "PRAGMA synchronous=ON"
+const no_sync_address = Memory.allocUtf8String(no_sync)
 
 var store_args_1, store_args_2;
 var should_copy = false;
+var calling_key = false;
+var should_show = false;
 
 
 Interceptor.attach(key_function, {
     onEnter: function (args, state) {
+        if(calling_key){ return; }
         should_copy = false;
+        should_show = false;
         console.log("[+] key found:");
         dbName = name_function_caller(args[0], NULL).readUtf8String();
         if (dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'Msg3.0.db'.toLowerCase() || false) {
+            should_show = true;
             // disable memory cache
-            // exec_function_caller(args[0], "PRAGMA synchronous=ON", NULL, NULL, NULL)
             //console.log("¦- db: " + args[0]);
             key_length = args[2].toInt32()
             console.log("¦- nKey: " + key_length);
@@ -96,18 +106,26 @@ Interceptor.attach(key_function, {
             //console.log("¦- *pkey: " + buf2hex(Memory.readByteArray(new UInt64(args[1]), key_length)));
             if(key_length == TARGET_KEY_LENGTH){
                 store_args_1 = args[0];
-                store_args_2 = args[1];
+                Memory.copy(original_password, args[1], key_length)
                 should_copy = true;
             }
         }
     },
     
     onLeave: function (retval, state) {
+        if(calling_key){ return; }
+        if(!should_show){ return; }
+        console.log("¦- sqlite3_key return: " + retval);
         if (should_copy) {
+            exec_function_caller(args[0], no_sync_address, NULL, NULL, NULL);
             console.log(rekey_function_caller(store_args_1, empty_password, key_length))
             // console.log(close_function_caller(store_args_1, 0))
             send("!!MSG3.0: " + dbName)
-            console.log(rekey_function_caller(store_args_1, store_args_2, key_length))
+            recv(function(){}).wait();
+            console.log(rekey_function_caller(store_args_1, original_password, key_length))
+            calling_key = true;
+            // console.log(key_function_caller(store_args_1, original_password, key_length))
+            calling_key = false;
         }
     }
 
@@ -125,15 +143,14 @@ def on_message(message, data):
             exit(3)
         if message['payload'].startswith("!!MSG3.0: "):
             filename = message['payload'][10:]
-            new_filename = filename.split("\\")[-1] + "_" + str(message_seq) +"_" + str(time.time()) + ".db"
+            script.post({})
+            new_filename = filename.split("\\")[-1] + "_" + str(message_seq) +"_" + str(time.time()).split('.')[0] + ".db"
             message_seq += 1
             print("Copying decrypted file:", filename, "to", new_filename)
-            file1 = open(message['payload'][10:], "rb")
-            # generate in current folder, remove full file path, with time
-            file2 = open(new_filename, "wb")
-            # detect extra sqlite header "SQLite header 3"
-            file1.seek(0)
+            shutil.copyfile(filename, new_filename)
+            file1 = open(new_filename, "rb")
             extra_flag = False
+            # detect extra sqlite header "SQLite header 3"
             if file1.read(15) == b"SQLite header 3":
                 file1.seek(1024)
                 if file1.read(15) == b"SQLite format 3":
@@ -143,9 +160,19 @@ def on_message(message, data):
             if not extra_flag:
                 file1.seek(0)
                 print("hmm db seems still encrypted... anything wrong?")
-            file2.write(file1.read())
             file1.close()
-            file2.close()
+            # remove extra 1024 bytes header of a huge file
+            if extra_flag:
+                file1 = open(new_filename, "rb")
+                file2 = open(new_filename + ".tmp", "wb")
+                file1.seek(1024)
+                shutil.copyfileobj(file1, file2)
+                file1.close()
+                file2.close()
+                os.remove(new_filename)
+                os.rename(new_filename + ".tmp", new_filename)
+            print("Done. File Path:")
+            print(os.path.abspath(new_filename))
         else:
             print(message['payload'])
     elif message['type'] == 'error':
