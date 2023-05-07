@@ -37,7 +37,7 @@ function buf2hex(buffer) {
 
 const kernel_util = Module.load('KernelUtil.dll');
 function single_function(pattern) {
-    pattern = pattern.replaceAll(" ", "").toLowerCase().replace(/\s/g,'').replace(/(.{2})/g,"$1 ");
+    pattern = pattern.replaceAll("##", "").replaceAll(" ", "").toLowerCase().replace(/\\s/g,'').replace(/(.{2})/g,"$1 ");
     var akey_function_list = Memory.scanSync(kernel_util.base, kernel_util.size, pattern);
     if (akey_function_list.length > 1) {
         send("pattern FOUND MULTI!!")

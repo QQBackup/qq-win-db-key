@@ -1,4 +1,6 @@
-## 跑
+# 解密 Windows QQ 数据库
+
+## 跑（建议）
 
 ### hook
 
@@ -18,17 +20,25 @@
 
 得到的`Msg3.0.db`开头有 1024 字节的扩展头，删掉。
 
+## 跑（有损坏数据风险，强烈不建议）
+
+备份`Msg3.0.db` -> 打开 QQ -> `python DANGER.py` -> 登录 -> 解密并修复后的数据库文件将自动生成在运行目录下
+
+## 读取信息
+
+<https://github.com/Akegarasu/qmsg-unpacker>
+
 ## 致谢
 
-https://bbs.kanxue.com/thread-250509.htm
+<https://bbs.kanxue.com/thread-250509.htm>
 
-https://www.52pojie.cn/thread-1370802-1-1.html
+<https://www.52pojie.cn/thread-1370802-1-1.html>
 
-https://bbs.kanxue.com/thread-266370.htm ( https://www.52pojie.cn/thread-1386731-1-1.html )
+<https://bbs.kanxue.com/thread-266370.htm> ( <https://www.52pojie.cn/thread-1386731-1-1.html> )
 
-https://github.com/Mrs4s/qq-db-key-injector
+<https://github.com/Mrs4s/qq-db-key-injector>
 
-https://github.com/Akegarasu/qmsg-unpacker
+<https://github.com/Akegarasu/qmsg-unpacker>
 
 ## 声明
 
