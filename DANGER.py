@@ -1,6 +1,9 @@
 print("别用！！！！！！！")
-print("必定损坏数据库！")
-print("理论上可能会损坏原数据库，慎用！如果要用请自行去除下一行的 exit()")
+print("必定损坏原始数据库！")
+print("rekey 之后是不能用原先的 key 解锁的！")
+#print("理论上可能会损坏原数据库，慎用！如果要用请自行去除下一行的 exit()")
+exit()
+exit()
 exit()
 
 import frida
@@ -80,12 +83,16 @@ var original_password = Memory.alloc(TARGET_KEY_LENGTH)
 empty_password.writeByteArray(Array(TARGET_KEY_LENGTH).fill(0))
 const no_sync = "PRAGMA synchronous=ON"
 const no_sync_address = Memory.allocUtf8String(no_sync)
+const TEST_PWD_SQL = Memory.allocUtf8String("SELECT count(*) FROM sqlite_master;")
 
-var store_args_1, store_args_2;
+var store_args_1, store_args_2, target_db;
 var should_copy = false;
 var calling_key = false;
 var should_show = false;
 
+function is_db_ok(){
+    return !exec_function_caller(target_db, TEST_PWD_SQL, NULL, NULL, NULL);
+}
 
 Interceptor.attach(key_function, {
     onEnter: function (args, state) {
@@ -96,6 +103,7 @@ Interceptor.attach(key_function, {
         dbName = name_function_caller(args[0], NULL).readUtf8String();
         if (dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'Msg3.0.db'.toLowerCase() || false) {
             should_show = true;
+            target_db = args[0];
             // disable memory cache
             //console.log("¦- db: " + args[0]);
             key_length = args[2].toInt32()
@@ -105,7 +113,6 @@ Interceptor.attach(key_function, {
             console.log("¦- dbName: " + name_function_caller(args[0], NULL).readUtf8String());
             //console.log("¦- *pkey: " + buf2hex(Memory.readByteArray(new UInt64(args[1]), key_length)));
             if(key_length == TARGET_KEY_LENGTH){
-                store_args_1 = args[0];
                 Memory.copy(original_password, args[1], key_length)
                 should_copy = true;
             }
@@ -116,17 +123,45 @@ Interceptor.attach(key_function, {
         if(calling_key){ return; }
         if(!should_show){ return; }
         console.log("¦- sqlite3_key return: " + retval);
+        console.log("¦- is_db_ok: " + is_db_ok());
         if (should_copy) {
-            exec_function_caller(args[0], no_sync_address, NULL, NULL, NULL);
-            console.log(rekey_function_caller(store_args_1, empty_password, key_length))
-            // console.log(close_function_caller(store_args_1, 0))
+//            exec_function_caller(target_db, no_sync_address, NULL, NULL, NULL);
+            console.log("rekey to NULL: " + rekey_function_caller(target_db, empty_password, key_length))
+            console.log("¦- is_db_ok: " + is_db_ok());
+            // console.log(close_function_caller(target_db, 0))
             send("!!MSG3.0: " + dbName)
             recv(function(){}).wait();
-            console.log(rekey_function_caller(store_args_1, original_password, key_length))
+            console.log("rekey to orig: " + rekey_function_caller(target_db, original_password, key_length))
+            console.log("¦- is_db_ok: " + is_db_ok());
             calling_key = true;
-            // console.log(key_function_caller(store_args_1, original_password, key_length))
+            // console.log(key_function_caller(target_db, original_password, key_length))
             calling_key = false;
         }
+    }
+
+});
+
+var rekey_show_result = false;
+Interceptor.attach(rekey_function, {
+    onEnter: function (args, state) {
+        console.log("[*] rekey:");
+        dbName = name_function_caller(args[0], NULL).readUtf8String();
+        rekey_show_result = false
+        if (dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'Msg3.0.db'.toLowerCase() || false) {
+            rekey_show_result = true;
+            //console.log("¦- db: " + args[0]);
+            key_length = args[2].toInt32()
+            console.log("¦- nKey: " + key_length);
+            //console.log("¦- pkey: " + args[1]);
+            console.log("¦- *pkey: " + buf2hex(args[1].readByteArray(key_length)));
+            console.log("¦- dbName: " + name_function_caller(args[0], NULL).readUtf8String());
+            //console.log("¦- *pkey: " + buf2hex(Memory.readByteArray(new UInt64(args[1]), key_length)));
+        }
+    },
+    
+    onLeave: function (retval, state) {
+        if(!rekey_show_result){ return; }
+        console.log("¦- sqlite3_rekey return: " + retval);
     }
 
 });
