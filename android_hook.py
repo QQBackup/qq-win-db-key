@@ -6,13 +6,16 @@ PACKAGE = "com.tencent.mobileqq"
 
 print("仍在测试。")
 print("请先关闭 Magisk Hide 与 Shamiko")
-print("可能需要禁用 SELinux")
+print("请先禁用 SELinux")
+print("请先打开 QQ 并登录，进入主界面，然后运行该脚本，等待数秒后退出登录并重新登录。")
 print("理论支持 Termux 与 桌面操作系统 运行")
 print("请勿使用 x86 或 x64 系统上的安卓模拟器。")
 print("适用版本：")
 print("https://downv6.qq.com/qqweb/QQ_1/android_apk/qq_8.9.58.11050_64.apk")
 print("https://github.com/Young-Lord/QQ-History-Backup/issues/9")
-
+print("""Termux 环境具体命令：
+sudo friendly # 重命名后的 frida-server
+python android_hook.py""")
 print("")
 
 print("可能需要彻底关闭 QQ 后运行，或者运行后重新登录")
@@ -21,6 +24,7 @@ import sys
 import time
 import platform
 import os
+import subprocess
 
 ON_TERMUX: bool = None
 def isOnTermux() -> bool:
@@ -82,13 +86,17 @@ function hook(){
         return akey_function_list[0]['address'];
     }
     
-    const name_function = single_function("FD 7B BE A9 F4 4F 01 A9FD 03 00 91 F3 03 01 AA  AE 00 00 94 60 01 00 34")
-    const key_v2_function = single_function("FD 7B BD A9 F5 0B 00 F9F4 4F 02 A9 FD 03 00 91  F4 03 01 AA F5 03 00 AA")
+    const name_function = single_function("FD 7B BD A9F6 57 01 A9 F4 4F 02 A9  FD 03 00 91 F6 03 01 AAF5 03 00 AA C1 49 FF 90  F3 03 03 2A F4 03 02 AA")
+    const key_v2_function = single_function("FD 7B BD A9F6 57 01 A9 F4 4F 02 A9  FD 03 00 91 F6 03 01 AAF5 03 00 AA C1 49 FF 90  F3 03 03 2A F4 03 02 AA")
     var funcName = new NativeFunction(name_function, 'pointer', ['pointer', 'pointer']);
     Interceptor.attach(key_v2_function, {
         onEnter: function(args) {
-            var dbName = funcName(args[0], NULL).readUtf8String();
-            if (dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'nt_msg.db'.toLowerCase() || false) {
+            send(args[0])
+            send(args[1])
+            send(args[2])
+            send(args[3])
+            /*var dbName = funcName(args[0], NULL).readUtf8String();*/
+            if (true||dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'nt_msg.db'.toLowerCase() || false) {
                 //console.log("¦- db: " + args[0]);
                 console.log("¦- nKey: " + args[3].toInt32());
                 //console.log("¦- pkey: " + args[2]);
@@ -118,6 +126,7 @@ const dlopen_process = {
 }
 try { Interceptor.attach(Module.findExportByName(null, "dlopen"), dlopen_process); } catch(err) { }
 try { Interceptor.attach(Module.findExportByName(null, "android_dlopen_ext"), dlopen_process); } catch(err) { }
+hook()
 """
 
 if __name__ == "__main__":
@@ -125,11 +134,24 @@ if __name__ == "__main__":
         device = frida.get_remote_device()
     else:
         device = frida.get_usb_device()
-    pid = device.spawn(["PACKAGE"])
-    session = device.attach(pid)
-    script = session.create_script(jscode1)
-    device.resume(pid)
-    print("QQ start running!! pid = %d" % pid)
+    try:
+        pid = int(subprocess.check_output(
+            "su -c pidof "+PACKAGE, shell=True).decode().strip())
+    except subprocess.CalledProcessError:
+        running = False
+    else:
+        running = True
+    # running=True;pid=3445
+    if running:
+        print(PACKAGE+" is already running", pid)
+        session = device.attach(pid)
+        script = session.create_script(jscode1)
+    else:
+        pid = device.spawn([PACKAGE])
+        session = device.attach(pid)
+        script = session.create_script(jscode1)
+        device.resume(pid)
+    print("QQ running!! pid = %d" % pid)
     
     def on_message(message, data):
         if message["type"] == "send":
