@@ -48,3 +48,19 @@ python android_hook.py
 # PC (adb)
 
 你也可以使用`adb`来避免在手机端配置`Termux`。具体过程略。
+
+# 记录
+
+// 根据字符串依次找到 sqlite3CodecQueryParameters，xref 找到 attachFunc，另外一个 xref 就是 openDatabase
+
+"ATTACH DATABASE '%s' as migrate;"之类的找到sqlcipher_codec_ctx_migrate，然后找到sqlite3_exec，执行：
+
+```
+FF 43 02 D1  FD 7B 03 A9 FC 6F 04 A9  FA 67 05 A9 F8 5F 06 A9    F6 57 07 A9 F4 4F 08 A9  FD C3 00 91 54 D0 3B D5    88 16 40 F9 F8 03 04 AA  F5 03 03 AA F6 03 02 AA
+```
+
+```
+ATTACH DATABASE 'plaintext.db' AS plaintext KEY '';
+SELECT sqlcipher_export('plaintext');
+DETACH DATABASE plaintext;
+```
