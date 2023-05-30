@@ -1,5 +1,13 @@
 # 解密 Windows QQ 数据库
 
+## 预先准备
+
+备份数据库！备份数据库！备份数据库！默认数据库路径为：`C:\Users\<用户名>\Documents\Tencent Files\<QQ号>\Msg3.0.db`
+
+测试可用的 QQ 版本：`QQ9.7.6 (28997)`
+
+如果出现异常，可以尝试消灭`QQProtect`后重试：<https://www.zhihu.com/question/265963430/answer/2492603110>
+
 ## 跑（自动，建议）
 
 需要 Python 以及 Frida：`pip install frida`
