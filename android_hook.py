@@ -44,6 +44,24 @@ def isOnTermux() -> bool:
 jscode1 = """
 const module_name = "libkernel.so"
 const dump_dest = "/data/local/tmp/dump.db"
+
+const TARGET_KEY_LENGTH = 16;
+var key_length = 0;
+var dbName;
+const new_database_handle = Memory.alloc(128)
+var new_database_handle_point_to;
+const new_database_name = Memory.alloc(2048)
+var empty_password = Memory.alloc(TARGET_KEY_LENGTH)
+var original_password = Memory.alloc(TARGET_KEY_LENGTH)
+empty_password.writeByteArray(Array(TARGET_KEY_LENGTH).fill(0))
+const no_sync = "PRAGMA synchronous=ON"
+const no_sync_address = Memory.allocUtf8String(no_sync)
+const export_sql = "ATTACH DATABASE 'plaintext.db' AS plaintext KEY '';SELECT sqlcipher_export('plaintext');DETACH DATABASE plaintext;"
+const export_sql_address = Memory.allocUtf8String(export_sql)
+const TEST_PWD_SQL = Memory.allocUtf8String("SELECT count(*) FROM sqlite_master;")
+var target_db;
+
+
 function hook(){
     function buf2hex(buffer) {
       const byteArray = new Uint8Array(buffer);
@@ -86,25 +104,36 @@ function hook(){
         return akey_function_list[0]['address'];
     }
     
-    const name_function = single_function("FD 7B BD A9F6 57 01 A9 F4 4F 02 A9  FD 03 00 91 F6 03 01 AAF5 03 00 AA C1 49 FF 90  F3 03 03 2A F4 03 02 AA")
+    //const name_function = single_function("FD 7B BD A9F6 57 01 A9 F4 4F 02 A9  FD 03 00 91 F6 03 01 AAF5 03 00 AA C1 49 FF 90  F3 03 03 2A F4 03 02 AA")
     const key_v2_function = single_function("FD 7B BD A9F6 57 01 A9 F4 4F 02 A9  FD 03 00 91 F6 03 01 AAF5 03 00 AA C1 49 FF 90  F3 03 03 2A F4 03 02 AA")
-    var funcName = new NativeFunction(name_function, 'pointer', ['pointer', 'pointer']);
+    const rekey_v2_function = single_function(" FF C3 01 D1 FD 7B 01 A9    FB 13 00 F9 FA 67 03 A9  F8 5F 04 A9 F6 57 05 A9    F4 4F 06 A9 FD 43 00 91  59 D0 3B D5 28 17 40 F9")
+    //var funcName = new NativeFunction(name_function, 'pointer', ['pointer', 'pointer']);
+    var funcRekey = new NativeFunction(rekey_v2_function, 'int', ['pointer', 'pointer', 'pointer', 'pointer']); // db, zDb, pKey, nKey
+    
+    // TODO
+    // const sqlite3_exec_function = single_function("FF 43 02 D1  FD 7B 03 A9 FC 6F 04 A9  FA 67 05 A9 F8 5F 06 A9    F6 57 07 A9 F4 4F 08 A9  FD C3 00 91 54 D0 3B D5    88 16 40 F9 F8 03 04 AA  F5 03 03 AA F6 03 02 AA")
+    // var funcExec = new NativeFunction(sqlite3_exec_function, , 'int', ['pointer', 'pointer', 'pointer', 'pointer', 'pointer']);
+    
+    // sqlite finalizer SELECT fts5 failed[{}]
     Interceptor.attach(key_v2_function, {
         onEnter: function(args) {
-            send(args[0])
-            send(args[1])
-            send(args[2])
-            send(args[3])
             /*var dbName = funcName(args[0], NULL).readUtf8String();*/
-            if (true||dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'nt_msg.db'.toLowerCase() || false) {
+            if (dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'nt_msg.db'.toLowerCase() || true) {
+                target_db = args[0];
                 //console.log("¦- db: " + args[0]);
                 console.log("¦- nKey: " + args[3].toInt32());
                 //console.log("¦- pkey: " + args[2]);
                 console.log("¦- *pkey: " + buf2hex(args[2].readByteArray(args[3].toInt32())));
-                console.log("¦- dbName: " + funcName(args[0], NULL).readUtf8String());
+                // console.log("¦- dbName: " + funcName(args[0], NULL).readUtf8String());
+                console.log("¦- dbName: " + "<not implemented>");
                 console.log("¦- *zDb: " + args[1].readUtf8String());
                 //console.log("¦- *pkey: " + buf2hex(Memory.readByteArray(new UInt64(args[2]), args[3])));
             }
+        },
+    
+        onLeave: function (retval, state) {
+            // TODO
+            // send("export to plaintext.db sqlite3_exec retval: " + funcExec(target_db, export_sql_address, NULL, NULL, NULL))
         }
     });
 }
