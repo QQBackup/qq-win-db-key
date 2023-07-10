@@ -1,5 +1,9 @@
 # 解密 Windows QQ 数据库
 
+## 寻求合作者
+
+欢迎一切 能够使用 Python 实现任何相关数据解析算法者/乐意适配其他平台或 QQNT 者 参与本项目以及 [QQ-History-Backup](https://github.com/Young-Lord/QQ-History-Backup/tree/dev) 的开发！[邮箱](mailto:ly-niko@qq.com)
+
 ## 预先准备
 
 备份数据库！备份数据库！备份数据库！默认数据库路径为：`C:\Users\<用户名>\Documents\Tencent Files\<QQ号>\Msg3.0.db`
@@ -42,7 +46,7 @@
 
 <https://github.com/Akegarasu/qmsg-unpacker>
 
-## 致谢
+## 致谢（询问一切有关编解码、数据格式的问题前必看！！）
 
 <https://bbs.kanxue.com/thread-250509.htm>
 
