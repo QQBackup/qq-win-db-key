@@ -3,8 +3,6 @@ print("必定损坏原始数据库！")
 print("rekey 之后是不能用原先的 key 解锁的！")
 #print("理论上可能会损坏原数据库，慎用！如果要用请自行去除下一行的 exit()")
 exit()
-exit()
-exit()
 
 import frida
 import sys
@@ -16,6 +14,7 @@ import os
 QQ_PID = None
 # GUI -> ['C:\\Program Files (x86)\\Tencent\\QQ\\Bin\\QQ.exe']
 # 要hook的 -> ['C:\\Program Files (x86)\\Tencent\\QQ\\Bin\\QQ.exe', '/hosthwnd=2164594', '/hostname=QQ_IPC_{12345678-ABCD-12EF-9976-18373DEAB821}', '/memoryid=0', 'C:\\Program Files (x86)\\Tencent\\QQ\\Bin\\QQ.exe']
+exit()
 for pid in psutil.pids():
     p = psutil.Process(pid)
     if p.name() == "QQ.exe" and len(p.cmdline()) > 1:
@@ -27,6 +26,7 @@ if QQ_PID is None:
     print("QQ not launched. exit.")
     sys.exit(1)
 print("QQ pid is:", QQ_PID)
+exit()
 demo_script = """
 var pMessageBoxW = Module.findExportByName("user32.dll", 'MessageBoxA')
 var lpText = Memory.allocAnsiString("I'm New MessageBox");
