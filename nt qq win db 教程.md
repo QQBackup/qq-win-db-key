@@ -1,4 +1,4 @@
-1. 1. 定位 `nt_sqlite3_key_v2:`
+1. 定位 `nt_sqlite3_key_v2:`
 
    此处采用 IDA 演示，您可以替换成您喜欢的任何反编译器
 
@@ -55,3 +55,6 @@
    ![image-20230716130512061](img/image-20230716130512061.png)
 
    
+## 另一种解密方式、拓展应用
+
+[QQ NT Windows 数据库解密+图片/文件清理](https://github.com/Mythologyli/qq-nt-db)
