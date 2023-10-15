@@ -55,3 +55,6 @@
    ![image-20230716130512061](img/image-20230716130512061.png)
 
    
+## 拓展应用
+
+[QQ NT Windows 数据库解密+图片/文件清理](https://github.com/Mythologyli/qq-nt-db)
