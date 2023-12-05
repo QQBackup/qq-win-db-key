@@ -61,27 +61,6 @@ python android_get_key.py
 
 接下来，可以确认命令行是否给出数据库密钥。
 
-### 使用 SQLiteStudio 打开数据库
-
-删除nt_msg.db文件的前1024字节数据
-
-使用SQLiteStudio打开处理后的nt_msg.db文件
-
-数据库类型选 SQLCipher
-
-密码（密钥）为空，通过PRAGMA设置密钥
-
-加密算法配置（可选）输入以下内容：
-
-```shell
-PRAGMA key = 'pass';    -- pass 替换为之前得到的密码（32字节md5小写字符串）
-PRAGMA cipher_page_size = 4096;
-PRAGMA kdf_iter = 4000;
-PRAGMA cipher_hmac_algorithm = HMAC_SHA1;
-PRAGMA cipher_default_kdf_algorithm = PBKDF2_HMAC_SHA512;
-PRAGMA cipher = 'aes-256-cbc';
-```
-
 ### 导出数据库
 
 > 该部分内容来源于[Android QQ NT 版数据库解密](https://blog.yllhwa.com/2023/09/29/Android%20QQ%20NT%20%E7%89%88%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A7%A3%E5%AF%86/)，由[@yllhwa](https://github.com/yllhwa)贡献。
