@@ -51,6 +51,12 @@ wget https://github.com/Young-Lord/qq-win-db-key/raw/master/android_get_key.py
 python android_get_key.py
 ```
 
+也可手动指定版本号，但目前所有支持的版本号使用的脚本均相同。
+
+```shell
+python android_get_key.py 8.9.58
+```
+
 此时应当输出`Frida script injected.`，若没有，请检查：
 
 - 是否以`root`权限运行`frida-server`
@@ -89,6 +95,8 @@ PRAGMA cipher = 'aes-256-cbc';
 关闭`Magisk Hide`与`Shamiko`，并且重启手机
 
 可能需要关闭`SELinux`（也就是设为`Permissive`）
+
+需要授予手机QQ读写存储权限
 
 下载`https://github.com/Young-Lord/qq-win-db-key/raw/master/android_dump.js`
 

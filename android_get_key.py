@@ -25,16 +25,7 @@ def isOnTermux() -> bool:
     ON_TERMUX = False
     return False
 
-generalident = 'FD 7B BD A9 F6 57 01 A9 F4 4F 02 A9 FD 03 00 91 F6 03 01 AA F5 03 00 AA ?? ?? ?? ?? F3 03 03 2A F4 03 02 AA'
-funcident = {
-    '8.9.58': generalident,
-    '8.9.63': generalident,
-    '8.9.68': generalident,
-    '8.9.76': generalident,
-}
-
-
-jscode1 = """
+general_script = """
 const module_name = "libkernel.so"
 
 function hook(){
@@ -84,7 +75,7 @@ function hook(){
             return akey_function_list[0]['address'];
         }
 
-        const key_v2_function = single_function("__single_function__parameter__")
+        const key_v2_function = single_function("FD 7B BD A9 F6 57 01 A9 F4 4F 02 A9 FD 03 00 91 F6 03 01 AA F5 03 00 AA ?? ?? ?? ?? F3 03 03 2A F4 03 02 AA")
 
         if(key_v2_function != null) Interceptor.attach(key_v2_function, {
             onEnter: function(args) {
@@ -103,13 +94,25 @@ function hook(){
 hook()
 """
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2 or sys.argv[1] not in funcident:
-        print("usage: qq.version.number")
-        print("supported version:", *funcident.keys())
-        sys.exit(1)
+version_scripts = {
+    '8.9.58': general_script,
+    '8.9.63': general_script,
+    '8.9.68': general_script,
+    '8.9.76': general_script,
+}
 
-    print("仍在测试。")
+if __name__ == "__main__":
+    if len(sys.argv) > 2:
+        print("用法: [qq.version.number]")
+        print("支持的版本:", *version_scripts.keys())
+        print("例:", __file__, '8.9.58')
+        sys.exit(1)
+    jscode = general_script
+    if len(sys.argv) == 2 and sys.argv[1] in version_scripts.keys():
+        jscode = version_scripts[sys.argv[1]]
+    else: print("使用默认版本注入脚本")
+
+    print("仍在测试...")
     print("请先关闭 Magisk Hide 与 Shamiko")
     print("请先禁用 SELinux")
     print("请先打开 QQ 并登录，进入主界面，然后运行该脚本，等待数秒后退出登录并重新登录。")
@@ -120,8 +123,8 @@ if __name__ == "__main__":
     print("https://github.com/Young-Lord/QQ-History-Backup/issues/9")
     print("""Termux 环境具体命令：
     sudo friendly # 重命名后的 frida-server
-    python android_hook.py""")
-    print("")
+    python android_get_key.py
+""")
     print("可能需要彻底关闭 QQ 后运行，或者运行后重新登录")
 
     if isOnTermux():
@@ -136,15 +139,14 @@ if __name__ == "__main__":
         running = False
     else:
         running = True
-    jscode1 = jscode1.replace("__single_function__parameter__", funcident[sys.argv[1]])
     if running:
         print(PACKAGE+" is already running", pid)
         session = device.attach(pid)
-        script = session.create_script(jscode1)
+        script = session.create_script(jscode)
     else:
         pid = device.spawn([PACKAGE])
         session = device.attach(pid)
-        script = session.create_script(jscode1)
+        script = session.create_script(jscode)
         device.resume(pid)
     print("QQ running!! pid = %d" % pid)
     
@@ -154,7 +156,6 @@ if __name__ == "__main__":
         else:
             toprint=message
         toprint=str(toprint)
-        #toprint=str(list(toprint))
         print(toprint)
     script.on("message", on_message)
     script.load()
