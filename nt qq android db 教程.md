@@ -23,7 +23,7 @@ pkg in frida frida-python
 su -c setenforce 0
 ```
 
-接着，手动下载主版本相同的`frida-server`，解压到`/data/local/tmp`下，并重命名为`friendly`；
+接着，手动下载主版本相同的`frida-server`，解压到`/data/local/tmp`下，并重命名为`friendly`（不一定要完全一致，仅是建议文件名不包含`frida`以略微避免检测）；
 
 赋予`friendly`可执行权限后，新开一个终端以`root`权限运行`friendly`
 
