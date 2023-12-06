@@ -116,6 +116,7 @@ if __name__ == "__main__":
     print("请先关闭 Magisk Hide 与 Shamiko")
     print("请先禁用 SELinux")
     print("请先打开 QQ 并登录，进入主界面，然后运行该脚本，等待数秒后退出登录并重新登录。")
+    print("若失败，可尝试彻底关闭 QQ 后直接运行")
     print("理论支持 Termux 与 桌面操作系统 运行")
     print("请勿使用 x86 或 x64 系统上的安卓模拟器。")
     print("适用版本：")
@@ -124,21 +125,21 @@ if __name__ == "__main__":
     print("""Termux 环境具体命令：
     sudo friendly # 重命名后的 frida-server
     python android_get_key.py
-""")
-    print("可能需要彻底关闭 QQ 后运行，或者运行后重新登录")
+    """)
 
     if isOnTermux():
         device = frida.get_remote_device()
+        pid_command = "su -c pidof "+PACKAGE
     else:
         device = frida.get_usb_device()
+        pid_command = "adb shell su -c pidof "+PACKAGE
+    running = True
     try:
         pid = int(subprocess.check_output(
-                "su -c pidof "+PACKAGE, shell=True).decode().strip()
-            ) if ON_TERMUX else device.get_frontmost_application().pid
-    except subprocess.CalledProcessError:
+                pid_command, shell=True).decode().strip().split(' ')[0]
+            )
+    except:
         running = False
-    else:
-        running = True
     if running:
         print(PACKAGE+" is already running", pid)
         session = device.attach(pid)

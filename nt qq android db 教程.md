@@ -23,9 +23,9 @@ pkg in frida frida-python
 su -c setenforce 0
 ```
 
-接着，手动下载主版本相同的`frida-server`，解压到`/data/local/tmp`下，并重命名为`fri`；
+接着，手动下载主版本相同的`frida-server`，解压到`/data/local/tmp`下，并重命名为`friendly`；
 
-赋予`fri`可执行权限后，新开一个终端以`root`权限运行`fri`
+赋予`friendly`可执行权限后，新开一个终端以`root`权限运行`friendly`
 
 下载 hook 脚本：
 
