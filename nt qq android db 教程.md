@@ -23,9 +23,9 @@ pkg in frida frida-python
 su -c setenforce 0
 ```
 
-接着，手动下载主版本相同的`frida-server`，解压到`/data/local/tmp`下，并重命名为`fri`；
+接着，手动下载主版本相同的`frida-server`，解压到`/data/local/tmp`下，并重命名为`friendly`（不一定要完全一致，仅是建议文件名不包含`frida`以略微避免检测）；
 
-赋予`fri`可执行权限后，新开一个终端以`root`权限运行`fri`
+赋予`friendly`可执行权限后，新开一个终端以`root`权限运行`friendly`
 
 下载 hook 脚本：
 
@@ -49,6 +49,12 @@ wget https://github.com/Young-Lord/qq-win-db-key/raw/master/android_get_key.py
 
 ```shell
 python android_get_key.py
+```
+
+也可手动指定版本号，但目前所有支持的版本号使用的脚本均相同。
+
+```shell
+python android_get_key.py 8.9.58
 ```
 
 此时应当输出`Frida script injected.`，若没有，请检查：
@@ -89,6 +95,8 @@ PRAGMA cipher = 'aes-256-cbc';
 关闭`Magisk Hide`与`Shamiko`，并且重启手机
 
 可能需要关闭`SELinux`（也就是设为`Permissive`）
+
+需要授予手机QQ读写存储权限
 
 下载`https://github.com/Young-Lord/qq-win-db-key/raw/master/android_dump.js`
 
