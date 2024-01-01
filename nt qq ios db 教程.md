@@ -85,7 +85,7 @@
 
 1. **在 PC 上安装** frida（确保 Python 已安装）：
    ```bash
-   // pipx 可以把包安装到隔离的环境，避免依赖冲突
+   # pipx 可以把包安装到隔离的环境，避免依赖冲突
    pip install pipx
    pipx install frida
    frida --version
