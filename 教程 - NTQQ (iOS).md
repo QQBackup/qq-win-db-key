@@ -17,11 +17,11 @@
 3. 启动 Frida 服务器
 
 在终端（NewTerm 之类的终端App，或SSH）运行：
-```zsh
+```sh
 frida-server -v
 ```
 如果端口被占用，更换其他端口，如：
-```zsh
+```sh
 frida-server --listen='0.0.0.0:27043' -v
 ```
 启动 Frida 服务端。
@@ -30,7 +30,78 @@ frida-server --listen='0.0.0.0:27043' -v
 
 ### 免越狱环境
 
-目前还没有测试过，可以参考 [Frida 文档 - Without Jailbreak](https://frida.re/docs/ios/#without-jailbreak)。
+- 需要有 **TrollStore 巨魔** 环境
+   - 安装教程：[cfw iOS Guide - Installing TrollStore](https://ios.cfw.guide/installing-trollstore/)
+
+- 参考链接：[Frida 文档 - Without Jailbreak](https://frida.re/docs/ios/#without-jailbreak)
+
+#### 开始
+
+1. App 脱壳，可参考[下一章节](#app-脱壳)（需要得到完整的 IPA 安装包）
+
+2. 解压脱壳得到的 IPA 安装包
+
+3. 下载 Frida Gadget 动态链接库 **`frida-gadget-x.x.x-ios-universal.dylib.gz`** \
+并解压得到 `frida-gadget-ios-universal.dylib`
+   - https://github.com/frida/frida/releases
+
+4. 注入 Frida Gadget 动态链接库，有两种方法，Sideloadly 更方便且支持 Windows，命令行方式 optool 需要在 macOS 环境下进行
+
+#### 方式一、使用 Sideloadly 注入 Frida Gadget
+
+直接照图进行配置：
+
+- 不允许自动更改 Bundle ID
+- 开启文件共享（即开放 App 沙盒 Documents 目录到系统自带的文件 App）
+- 仅导出 IPA
+
+然后点击 Start 开始导出
+
+![Sideloadly](img/image-ios-5.png)
+
+#### 方式二、使用 optool 注入 Frida Gadget
+
+1. 安装 optool，这里需要使用 `xcodebuild` 命令
+
+```sh
+git clone https://github.com/alexzielenski/optool.git
+cd optool
+git submodule update --init --recursive
+xcodebuild
+ln -s $PWD/build/Release/optool /usr/local/bin/optool
+```
+
+2. 将前面下载的 **`frida-gadget-ios-universal.dylib`** 放入 IPA 解压目录下的 `Payload/QQ.app/Frameworks` 目录
+
+```sh
+cp frida-gadget-ios-universal.dylib Payload/QQ.app/Frameworks
+```
+
+3. 用 optool 把动态链接库加载命令插入到 QQ 主程序中（此处路径无法自动补全，注意不要打错了）
+
+```sh
+optool install -c load -p "@executable_path/Frameworks/frida-gadget-ios-universal.dylib" -t Payload/QQ.app/QQ
+```
+运行成功的输出：
+```
+Found thin header...
+Load command already exists
+Successfully inserted a LC_LOAD_DYLIB command for arm64
+Writing executable to Payload/QQ.app/QQ...
+```
+
+4. 为了方便后续导出聊天记录数据库等文件，需要修改 App 配置，允许用户通过系统自带的文件 App 访问 App 沙盒 Documents 目录，具体操作可以网上查询（
+
+5. 重新打包 IPA，可以直接压缩 `Payload` 目录为 zip 归档，然后重命名文件后缀为 `ipa`，把重新打包好的 IPA 安装包发送到 iOS 设备
+
+#### 安装重新打包好的 IPA
+
+发送重新打包好的 QQ IPA 安装包到 iOS 设备，**使用 TrollStore 巨魔** 进行安装，如果提示安装失败，应用已存在，选择强制安装
+
+> 需要使用巨魔的原因：附带了 Frida Gadget 的 QQ 安装包需要以覆盖，或者更新的方式安装到设备，这样它才能读取到聊天记录，不然系统会分配新的沙盒空间。为了实现这一点，App Bundle ID 需要保持不变，即 `com.tencent.mqq`，但如果使用腾讯的 `com.tencent.*` 作为 Bundle ID，在签名过程中就会失败，因此需要绕过签名，即使用 TrollStore 安装。
+
+将 iOS 设备有线连接至 PC，可以自行用 `frida-ps` 等工具测试一下 Frida 服务器是否正常工作（无线连接等可以参考 [Frida 文档 - Gadget](https://frida.re/docs/gadget/)）
+
 
 ## II 反编译
 
