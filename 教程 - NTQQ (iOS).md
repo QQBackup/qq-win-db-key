@@ -224,7 +224,9 @@ frida -H 192.168.1.163:27043 QQ -l ios_get_key.js
 ```
 **复制其中的 `pKey` 和 `zFilename`**
 
-7. 通过 SFTP 或 Filza App 等方式从 iOS 设备下载数据库文件
+7. 从 iOS 设备下载数据库文件
+    - 越狱用户可使用 SFTP 或 Filza App
+    - 免越狱方式直接用 iOS 自带的文件 App 查看
 
 路径为上一步的 `zFilename` 所在目录的路径
 ```
@@ -234,7 +236,9 @@ frida -H 192.168.1.163:27043 QQ -l ios_get_key.js
 
 8. 下载安装 SQLite 查看器（需支持读取SQLCipher加密的数据库），如 [DB Browser for SQLite](https://sqlitebrowser.org/)
 
-9. 解密数据库
+9. 删除数据库文件 **前 `1024` 字节** 部分
+
+10. 解密数据库
 
 - 密码：上一步获取的 **`pKey`**
 - 页大小：`4096`
