@@ -39,13 +39,11 @@ frida-server --listen='0.0.0.0:27043' -v
 
 1. App 脱壳，可参考[下一章节](#app-脱壳)（需要得到完整的 IPA 安装包）
 
-2. 解压脱壳得到的 IPA 安装包
-
-3. 下载 Frida Gadget 动态链接库 **`frida-gadget-x.x.x-ios-universal.dylib.gz`** \
+2. 下载 Frida Gadget 动态链接库 **`frida-gadget-x.x.x-ios-universal.dylib.gz`** \
 并解压得到 `frida-gadget-ios-universal.dylib`
    - https://github.com/frida/frida/releases
 
-4. 注入 Frida Gadget 动态链接库，有两种方法，Sideloadly 更方便且支持 Windows，命令行方式 optool 需要在 macOS 环境下进行
+3. 注入 Frida Gadget 动态链接库，有两种方法，Sideloadly 更方便且支持 Windows，命令行方式 optool 需要在 macOS 环境下进行
 
 #### 方式一、使用 Sideloadly 注入 Frida Gadget
 
@@ -53,6 +51,7 @@ frida-server --listen='0.0.0.0:27043' -v
 
 - 不允许自动更改 Bundle ID
 - 开启文件共享（即开放 App 沙盒 Documents 目录到系统自带的文件 App）
+- 注入动态链接库
 - 仅导出 IPA
 
 然后点击 Start 开始导出
@@ -61,7 +60,9 @@ frida-server --listen='0.0.0.0:27043' -v
 
 #### 方式二、使用 optool 注入 Frida Gadget
 
-1. 安装 optool，这里需要使用 `xcodebuild` 命令
+1. 解压脱壳得到的 IPA 安装包
+
+2. 安装 optool，这里需要使用 `xcodebuild` 命令
 
 ```sh
 git clone https://github.com/alexzielenski/optool.git
@@ -71,13 +72,13 @@ xcodebuild
 ln -s $PWD/build/Release/optool /usr/local/bin/optool
 ```
 
-2. 将前面下载的 **`frida-gadget-ios-universal.dylib`** 放入 IPA 解压目录下的 `Payload/QQ.app/Frameworks` 目录
+3. 将前面下载的 **`frida-gadget-ios-universal.dylib`** 放入 IPA 解压目录下的 `Payload/QQ.app/Frameworks` 目录
 
 ```sh
 cp frida-gadget-ios-universal.dylib Payload/QQ.app/Frameworks
 ```
 
-3. 用 optool 把动态链接库加载命令插入到 QQ 主程序中（此处路径无法自动补全，注意不要打错了）
+4. 用 optool 把动态链接库加载命令插入到 QQ 主程序中（此处路径无法自动补全，注意不要打错了）
 
 ```sh
 optool install -c load -p "@executable_path/Frameworks/frida-gadget-ios-universal.dylib" -t Payload/QQ.app/QQ
@@ -90,9 +91,9 @@ Successfully inserted a LC_LOAD_DYLIB command for arm64
 Writing executable to Payload/QQ.app/QQ...
 ```
 
-4. 为了方便后续导出聊天记录数据库等文件，需要修改 App 配置，允许用户通过系统自带的文件 App 访问 App 沙盒 Documents 目录，具体操作可以网上查询（
+5. 为了方便后续导出聊天记录数据库等文件，需要修改 App 配置，允许用户通过系统自带的文件 App 访问 App 沙盒 Documents 目录，具体操作可以网上查询（
 
-5. 重新打包 IPA，可以直接压缩 `Payload` 目录为 zip 归档，然后重命名文件后缀为 `ipa`，把重新打包好的 IPA 安装包发送到 iOS 设备
+6. 重新打包 IPA，可以直接压缩 `Payload` 目录为 zip 归档，然后重命名文件后缀为 `ipa`，把重新打包好的 IPA 安装包发送到 iOS 设备
 
 #### 安装重新打包好的 IPA
 
