@@ -154,9 +154,9 @@ frida -H 192.168.1.163:27043 QQ -l ios_get_key.js
 
 7. 通过 SFTP 或 Filza App 等方式从 iOS 设备下载数据库文件
 
-路径为上一步的 `zFilename` 所在目录的路径，同时路径前面需要 **加上 `/private` 才是真实路径**
+路径为上一步的 `zFilename` 所在目录的路径
 ```
-/private/var/mobile/Containers/Data/Application/22675923-xxxx-xxxx-xxxx-C1CB389E8E22/Documents/QQNT/DB/nt_db/nt_qq_15207xxxxxxxxxxxxxxxxx0d0be
+/var/mobile/Containers/Data/Application/22675923-xxxx-xxxx-xxxx-C1CB389E8E22/Documents/QQNT/DB/nt_db/nt_qq_15207xxxxxxxxxxxxxxxxx0d0be
 ```
 该目录下有数个数据库，除了一般的聊天记录以外还有（QQ频道记录？）更多数据。
 
