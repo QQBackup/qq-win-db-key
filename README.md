@@ -6,7 +6,7 @@
 
 ## 关于
 
-导出并解密 PCQQ / QQ NT Mac 版 / QQ NT Windows 版 / QQ NT Android 版 聊天记录数据库。
+导出并解密 PCQQ / QQ NT 等软件的聊天记录数据库。
 
 具体教程自行查看本目录下对应`.md`文件。
 
