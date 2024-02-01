@@ -40,7 +40,9 @@
 
 ## 读取信息
 
-<https://github.com/Akegarasu/qmsg-unpacker>
+<https://github.com/Akegarasu/qmsg-unpacker> （分析原理，Golang）
+
+<https://github.com/saucer-man/qq_msg_decode> （可直接运行，Python）
 
 ## 致谢（询问一切有关编解码、数据格式的问题前必看！！）
 
