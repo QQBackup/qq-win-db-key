@@ -34,3 +34,4 @@
 - [Hakuuyosei/QQHistoryExport](https://github.com/Hakuuyosei/QQHistoryExport) ![GitHub last commit](https://img.shields.io/github/last-commit/Hakuuyosei/QQHistoryExport/master)
 - [ZhangJun2017/QQChatHistoryExporter](https://github.com/ZhangJun2017/QQChatHistoryExporter) ![GitHub last commit](https://img.shields.io/github/last-commit/ZhangJun2017/QQChatHistoryExporter/master)
 - [QQBackup/QQ-History-Backup](https://github.com/QQBackup/QQ-History-Backup) ![GitHub last commit](https://img.shields.io/github/last-commit/QQBackup/QQ-History-Backup/master)
+- [QQ-G 手机QQ本地聊天记录查看器 - 吾爱破解](https://www.52pojie.cn/thread-1227585-1-1.html) 2020/7/29 更新
