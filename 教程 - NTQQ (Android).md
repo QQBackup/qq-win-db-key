@@ -2,7 +2,7 @@
 
 ## 基础环境
 
-以下环境配置任选一种即可。
+以下环境配置任选一种即可。注意，每种方法都要求您拥有手机的 root 权限。
 
 ### Termux
 
@@ -13,7 +13,7 @@
 安装基础依赖：
 
 ```shell
-pkg in python wget tsu
+pkg in python wget tsu root-repo
 pkg in frida frida-python
 ```
 
