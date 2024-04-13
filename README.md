@@ -2,7 +2,7 @@
 
 ## 寻求合作者
 
-欢迎一切 能够实现任何相关数据解析算法/乐意适配其他平台者 参与本项目以及 [QQ-History-Backup](https://github.com/Young-Lord/QQ-History-Backup/tree/dev) 的开发！[邮箱](mailto:ly-niko@qq.com)，或者直接开 PR/issue。文档的写作风格随意（但建议图片的 替代文本 和 文件名 好好写），也可以只加入一个指向你的 仓库/博客 等的链接。
+欢迎一切 能够实现任何相关数据解析算法/乐意适配其他平台者 参与本项目以及 [QQ-History-Backup](https://github.com/QQBackup/QQ-History-Backup/tree/dev) 的开发！[邮箱](mailto:ly-niko@qq.com)，或者直接开 PR/issue。文档的写作风格随意（但建议图片的 替代文本 和 文件名 好好写），也可以只加入一个指向你的 仓库/博客 等的链接。
 
 ## 关于
 
@@ -17,3 +17,5 @@
 本项目仅供学习交流使用，严禁用于任何违反中国大陆法律法规、您所在地区法律法规、[QQ软件许可及服务协议](https://rule.tencent.com/rule/preview/46a15f24-e42c-4cb6-a308-2347139b1201)的行为，开发者不承担任何相关行为导致的直接或间接责任。
 
 本项目不对生成内容的完整性、准确性作任何担保，因此生成的一切内容**没有法律效力**，您不应当将其用于学习与交流外的任何用途。
+
+本项目目前没有开源协议，如果哪天完全没人维护了直接开个新仓库接着搞就行。记得保留原作者信息（比如 commit 作者），建议在[本仓库的 issues](https://github.com/QQBackup/qq-win-db-key/issues) 宣传一下。
