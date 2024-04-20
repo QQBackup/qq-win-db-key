@@ -6,6 +6,6 @@ Frida hook：可以直接使用 [msojocs/nt-hook](https://github.com/msojocs/nt-
 
 搜索内存，并穷举可能的密码字符串：参考[此 gist](https://gist.github.com/bczhc/c0f29920d4e9d0cc6d2c49f7f2fb3a78)。
 
-## 解密
+## 打开数据库
 
-找到密钥之后，按照其他平台教程中列出方式解密即可。此处不再赘述。
+请参考 [基础教程 - NTQQ 解密数据库](基础教程 - NTQQ 解密数据库.md)。
