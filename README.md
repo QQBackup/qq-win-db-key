@@ -18,4 +18,4 @@
 
 本项目不对生成内容的完整性、准确性作任何担保，因此生成的一切内容**没有法律效力**，您不应当将其用于学习与交流外的任何用途。
 
-本项目目前没有开源协议，如果哪天完全没人维护了直接开个新仓库接着搞就行。记得保留原作者信息（比如 commit 作者），建议在[本仓库的 issues](https://github.com/QQBackup/qq-win-db-key/issues) 宣传一下。
+本项目基本遵循`LICENSE`里的开源协议，如果哪天完全没人维护了直接开个新仓库接着搞就行。记得保留原作者信息（比如 commit 作者），建议在[本仓库的 issues](https://github.com/QQBackup/qq-win-db-key/issues) 宣传一下。
