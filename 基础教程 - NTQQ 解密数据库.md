@@ -8,7 +8,11 @@
 
 ## 环境
 
-建议使用 非 Windows 环境，若为 Windows 可使用 WSL / Git Bash 等模拟 Linux 环境。以下标有`仅 Linux`字样的即代表不可直接使用 Windows 系统的`CMD`或`Powershell`等执行。
+建议使用 非 Windows 环境。
+
+以下标有`仅 Linux`字样的即代表不可直接使用 Windows 系统的`CMD`或`Powershell`等执行。
+
+若为 Windows，可使用 WSL / Git Bash 等模拟 Linux 环境；若为 Android，可使用 Termux 模拟 Linux 环境。
 
 ## 移除无关文件头
 
@@ -17,6 +21,8 @@
 使用二进制编辑器：Android 下的 [MT 管理器](https://d.binmt.cc/)（需要付费）、Windows 下的 [HxD](https://mh-nexus.de/en/hxd/) 等软件均可使用，细节从略。
 
 使用`tail`命令（仅 Linux）：`tail -c +1025 nt_msg.db > nt_msg.clean.db`
+
+使用 Python：`python -c "open('nt_msg.clean.db','wb').write(open('README.md','rb').read()[1024:])"`
 
 完成后，得到`nt_msg.clean.db`文件。
 
