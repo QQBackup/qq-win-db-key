@@ -47,11 +47,11 @@ PRAGMA cipher = 'aes-256-cbc';
 
 选择 `nt_msg.clean.db`，按需修改`KDF iterations`与`HMAC algorithm`（见上文[通用配置选项](#通用配置选项)修改）：
 
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/18183a7a-363f-4d51-4e5f-2a0c9f659b00/public" alt="“SQLCipher 加密”窗口中的具体配置选项（英文，macOS 视图）" width="70%" />
+<img src="img/image-mac-sqlcipher-conf.webp" alt="“SQLCipher 加密”窗口中的具体配置选项（英文，macOS 视图）" width="70%" />
 
-![“SQLCipher 加密”窗口中的具体配置选项（中文，Windows 视图）](img/image-win-sqlcipher-conf.png)
+![“SQLCipher 加密”窗口中的具体配置选项（中文，Windows 视图）](img/image-win-sqlcipher-conf.webp)
 
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/76bde024-db6c-4dbe-2ab4-2e544358ed00/public" alt="DB Browser for SQLite 中，正常打开数据库后可看到 buddy_list 等表" width="70%" />
+<img src="img/image-mac-6.webp" alt="DB Browser for SQLite 中，正常打开数据库后可看到 buddy_list 等表" width="70%" />
 
 ### SQLiteStudio
 

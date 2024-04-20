@@ -2,15 +2,15 @@
 
    此处采用 IDA 演示，您可以替换成您喜欢的任何反编译器
 
-   ![在 Strings 窗口中搜索 nt_sqlite3_key_v2，得到多个结果](img/image-win-1.png)
+   ![在 Strings 窗口中搜索 nt_sqlite3_key_v2，得到多个结果](img/image-win-1.webp)
 
    定位到字符串 `nt_sqlite3_key_v2: db=%p zDb=%s`
 
-   ![在 IDA View 中定位到此字符串](img/image-win-2.png)
+   ![在 IDA View 中定位到此字符串](img/image-win-2.webp)
 
    在此字符串上按`x`，或右键选此字符串并选择`Jump to xref`查看引用，进入引用的函数
 
-   ![通过字符串找到目标函数](img/image-win-3.png)
+   ![通过字符串找到目标函数](img/image-win-3.webp)
 
    记录函数地址，切换到 Hex View，复制从函数地址开始的一段字节序列，作为特征 Hex
 

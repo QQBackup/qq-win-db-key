@@ -60,7 +60,7 @@ frida-server --listen='0.0.0.0:27043' -v
 
 然后点击 Start 开始导出
 
-![Sideloadly 中的具体配置选项](img/image-ios-5.png)
+![Sideloadly 中的具体配置选项](img/image-ios-5.webp)
 
 #### 方式二、使用 optool 注入 Frida Gadget
 
@@ -122,7 +122,7 @@ Writing executable to Payload/QQ.app/QQ...
 - dumpdecrypted (<https://github.com/stefanesser/dumpdecrypted>)
 - frida-ios-dump (<https://github.com/AloneMonkey/frida-ios-dump>)
 - AppsDump2（有图形界面的App，用起来很方便，不过似乎找不到它的仓库链接）
-   ![AppsDump2](img/image-ios-4.jpg)
+   ![AppsDump2](img/image-ios-4.webp)
 - ...
 
 只需要得到脱壳后的 Mach-O 二进制主程序即可，不需要完整的 IPA 安装包。
@@ -154,17 +154,17 @@ int sqlite3_key_v2(sqlite3 *db, const char *zDb, const void *pKey, int nKey);
 const SQLLiteKeyV2Offset = 0xDA1BFB4;
 ```
 
-![sqlite3_key_v2 函数在 IDA 中的汇编代码与伪代码](img/image-ios-1.png)
+![sqlite3_key_v2 函数在 IDA 中的汇编代码与伪代码](img/image-ios-1.webp)
 
 3. 根据调用关系 `sqlite3CodecAttach`->`sqlcipher_codec_ctx_init`->`sqlcipher_codec_ctx_set_pagesize` 可以确定页大小为 `4096`
 
-![在 IDA 中分析 sqlcipher_codec_ctx_set_pagesize 的调用关系](img/image-ios-3.png)
+![在 IDA 中分析 sqlcipher_codec_ctx_set_pagesize 的调用关系](img/image-ios-3.webp)
 
 4. 根据调用关系  \
 `sqlite3CodecAttach`->`sqlcipher_codec_ctx_init`->`sqlcipher_codec_ctx_set_plaintext_header_size`，\
 用 Frida hook `sqlcipher_codec_ctx_set_plaintext_header_size` 函数，可以确定纯文本文件大小为 `0`
 
-![在 IDA 中分析 sqlcipher_codec_ctx_set_pagesize 的调用关系](img/image-ios-2.png)
+![在 IDA 中分析 sqlcipher_codec_ctx_set_pagesize 的调用关系](img/image-ios-2.webp)
 
 ## III Frida 附加到 QQ 进程，获取密钥
 

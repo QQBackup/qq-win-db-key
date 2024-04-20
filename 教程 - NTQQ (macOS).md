@@ -29,13 +29,13 @@ cp /Applications/QQ.app/Contents/Resources/app/wrapper.node .
 
 随后, 你需要使用 Hopper 打开 `wrapper.node` 在 Mac M1/M2 上需要选择 `aarch64`, 并且搜索 `nt_sqlite3_key_v2`.
 
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/30dcc60b-3e3a-429d-c6cb-0428e0d41400/public" alt="Search" width="70%" />
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/3aad8d0d-81d6-4a8d-a071-603d28579a00/public" alt="References to" width="50%" />
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/a4cf0faa-b8c0-43d4-f52a-c074b32be700/public" alt="References to" width="50%" />
+<img src="img/image-mac-1.webp" alt="Search" width="70%" />
+<img src="img/image-mac-2.webp" alt="References to" width="50%" />
+<img src="img/image-mac-3.webp" alt="References to" width="50%" />
 
 如上图所示, 我们可以跳转到引用该函数的地方, 随后记下该函数地址:
 
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/0815717b-de37-4172-422f-fddcb6ed9500/public" alt="Address" width="70%" />
+<img src="img/image-mac-4.webp" alt="Address" width="70%" />
 
 ## 3. 断点 & 调试
 
@@ -76,7 +76,7 @@ Process 78488 resuming
 
 点击登录后, 如无意外, 你会看到断点被命中, 并且进入了 `nt_sqlite3_key_v2` 函数, 如下图所示:
 
-<img src="https://imagedelivery.net/5O09_o54BtxkkrL59wq3ZQ/ef93eb4b-3d67-46fb-90ce-48f8a3f5f300/public" alt="breakpoint" width="70%" />
+<img src="img/image-mac-5.webp" alt="breakpoint" width="70%" />
 
 参考函数签名:
 
