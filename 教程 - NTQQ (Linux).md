@@ -8,4 +8,4 @@ Frida hook：可以直接使用 [msojocs/nt-hook](https://github.com/msojocs/nt-
 
 ## 打开数据库
 
-请参考 [基础教程 - NTQQ 解密数据库](基础教程 - NTQQ 解密数据库.md)。
+请参考 [基础教程 - NTQQ 解密数据库](基础教程%20-%20NTQQ%20解密数据库.md)。

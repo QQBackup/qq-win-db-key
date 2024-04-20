@@ -114,7 +114,7 @@ int sqlite3_key_v2(
 cp "/Users/user/Library/Containers/com.tencent.qq/Data/Library/Application Support/QQ/nt_qq_cc067b8bcbf8980fabd93574e09d9efa/nt_db/profile_info.db" test.db
 ```
 
-对于解密数据库, 请参考 [基础教程 - NTQQ 解密数据库](基础教程 - NTQQ 解密数据库.md).
+对于解密数据库, 请参考 [基础教程 - NTQQ 解密数据库](基础教程%20-%20NTQQ%20解密数据库.md).
 
 出于隐私考虑, 不展示解密后的数据库内容.
 
