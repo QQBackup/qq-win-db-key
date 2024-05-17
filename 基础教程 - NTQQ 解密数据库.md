@@ -4,7 +4,7 @@
 
 （目前）加密使用SQLCipher，并更改了一些参数。
 
-本教程适用于`nt_msg.db`或`group_msg_fts.db`，以下统一以`nt_msg.db`代替。
+本教程适用于`nt_msg.db`或`group_msg_fts.db`，也可能可以用于其它部分数据库，以下统一以`nt_msg.db`代替。
 
 ## 环境
 
