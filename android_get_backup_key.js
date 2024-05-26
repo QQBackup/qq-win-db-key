@@ -43,7 +43,7 @@ function hook(){
     } else {
         function single_function(pattern) {
             pattern = pattern.replaceAll("##", "").replaceAll(" ", "").toLowerCase().replace(/\\s/g,'').replace(/(.{2})/g,"$1 ");
-            send("Pattern: " + pattern)
+            send("定位函数使用的序列： " + pattern)
             var akey_function_list = Memory.scanSync(kernel_util.base, kernel_util.size, pattern);
             if (akey_function_list.length == 0) {
                 send("Pattern NOT FOUND!! EXIT!!")
