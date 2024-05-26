@@ -83,20 +83,23 @@ Interceptor.attach(key_function, {
 session = frida.get_local_device().attach(QQ_PID)
 script = session.create_script(hook_script)
 
+
 def on_message(message, data):
-    if message['type'] == 'send':
-        if message['payload'] == "!!exit":
+    if message["type"] == "send":
+        if message["payload"] == "!!exit":
             exit(3)
-        print(message['payload'])
-    elif message['type'] == 'error':
-        print(message['stack'])
+        print(message["payload"])
+    elif message["type"] == "error":
+        print(message["stack"])
+
 
 def on_destroyed():
     print("process exited.")
     sys.exit(0)
 
-script.on('message', on_message)
-script.on('destroyed', on_destroyed)
+
+script.on("message", on_message)
+script.on("destroyed", on_destroyed)
 script.load()
 print("hooked.")
 sys.stdin.read()

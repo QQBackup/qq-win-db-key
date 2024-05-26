@@ -1,7 +1,7 @@
 print("别用！！！！！！！")
 print("必定损坏原始数据库！")
 print("rekey 之后是不能用原先的 key 解锁的！")
-#print("理论上可能会损坏原数据库，慎用！如果要用请自行去除下一行的 exit()")
+# print("理论上可能会损坏原数据库，慎用！如果要用请自行去除下一行的 exit()")
 exit()
 
 import frida
@@ -171,15 +171,23 @@ session = frida.get_local_device().attach(QQ_PID)
 script = session.create_script(hook_script)
 message_seq = 0
 
+
 def on_message(message, data):
     global message_seq
-    if message['type'] == 'send':
-        if message['payload'] == "!!exit":
+    if message["type"] == "send":
+        if message["payload"] == "!!exit":
             exit(3)
-        if message['payload'].startswith("!!MSG3.0: "):
-            filename = message['payload'][10:]
+        if message["payload"].startswith("!!MSG3.0: "):
+            filename = message["payload"][10:]
             script.post({})
-            new_filename = filename.split("\\")[-1] + "_" + str(message_seq) +"_" + str(time.time()).split('.')[0] + ".db"
+            new_filename = (
+                filename.split("\\")[-1]
+                + "_"
+                + str(message_seq)
+                + "_"
+                + str(time.time()).split(".")[0]
+                + ".db"
+            )
             message_seq += 1
             print("Copying decrypted file:", filename, "to", new_filename)
             shutil.copyfile(filename, new_filename)
@@ -209,16 +217,18 @@ def on_message(message, data):
             print("Done. File Path:")
             print(os.path.abspath(new_filename))
         else:
-            print(message['payload'])
-    elif message['type'] == 'error':
-        print(message['stack'])
+            print(message["payload"])
+    elif message["type"] == "error":
+        print(message["stack"])
+
 
 def on_destroyed():
     print("process exited.")
     os._exit(0)
 
-script.on('message', on_message)
-script.on('destroyed', on_destroyed)
+
+script.on("message", on_message)
+script.on("destroyed", on_destroyed)
 script.load()
 print("hooked.")
 sys.stdin.read()

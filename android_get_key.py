@@ -13,18 +13,25 @@ PACKAGE = "com.tencent.mobileqq"
 # OPTIONS END
 
 ON_TERMUX: Optional[bool] = None
+
+
 def isOnTermux() -> bool:
     global ON_TERMUX
     if ON_TERMUX is not None:
         return ON_TERMUX
-    if platform.system() == "Linux"\
-        and "ANDROID_ROOT" in os.environ.keys()\
-        and (os.path.exists("/data/data/com.termux")
-             or ("TERMUX_VERSION" in os.environ.keys())):
+    if (
+        platform.system() == "Linux"
+        and "ANDROID_ROOT" in os.environ.keys()
+        and (
+            os.path.exists("/data/data/com.termux")
+            or ("TERMUX_VERSION" in os.environ.keys())
+        )
+    ):
         ON_TERMUX = True
         return True
     ON_TERMUX = False
     return False
+
 
 general_script = """
 const module_name = "libkernel.so"
@@ -96,53 +103,61 @@ hook()
 """
 
 version_scripts = {
-    '8.9.58': general_script,
-    '8.9.63': general_script,
-    '8.9.68': general_script,
-    '8.9.76': general_script,
+    "8.9.58": general_script,
+    "8.9.63": general_script,
+    "8.9.68": general_script,
+    "8.9.76": general_script,
 }
 
 if __name__ == "__main__":
     if len(sys.argv) > 2:
         print("用法: [qq.version.number]")
         print("支持的版本:", *version_scripts.keys())
-        print("例:", __file__, '8.9.58')
+        print("例:", __file__, "8.9.58")
         sys.exit(1)
     jscode = general_script
     if len(sys.argv) == 2 and sys.argv[1] in version_scripts.keys():
         jscode = version_scripts[sys.argv[1]]
-    else: print("使用默认版本注入脚本")
+    else:
+        print("使用默认版本注入脚本")
 
     print("仍在测试...")
     print("请先关闭 Magisk Hide 与 Shamiko")
     print("请先禁用 SELinux")
-    print("请先打开 QQ 并登录，进入主界面，然后运行该脚本，等待数秒后退出登录并重新登录。")
+    print(
+        "请先打开 QQ 并登录，进入主界面，然后运行该脚本，等待数秒后退出登录并重新登录。"
+    )
     print("若失败，可尝试彻底关闭 QQ 后直接运行")
     print("理论支持 Termux 与 桌面操作系统 运行")
     print("请勿使用 x86 或 x64 系统上的安卓模拟器。")
     print("适用版本：")
     print("https://downv6.qq.com/qqweb/QQ_1/android_apk/qq_8.9.58.11050_64.apk")
     print("https://github.com/Young-Lord/QQ-History-Backup/issues/9")
-    print("""Termux 环境具体命令：
+    print(
+        """Termux 环境具体命令：
     sudo friendly # 重命名后的 frida-server
     python android_get_key.py
-    """)
+    """
+    )
 
     if isOnTermux():
         device = frida.get_remote_device()
-        pid_command = "su -c pidof "+PACKAGE
+        pid_command = "su -c pidof " + PACKAGE
     else:
         device = frida.get_usb_device()
-        pid_command = "adb shell su -c pidof "+PACKAGE
+        pid_command = "adb shell su -c pidof " + PACKAGE
     running = True
     try:
-        pid = int(subprocess.check_output(
-                pid_command, shell=True).decode().strip().split(' ')[0]
-            )
+        pid = int(
+            subprocess.check_output(pid_command, shell=True)
+            .decode()
+            .strip()
+            .split(" ")[0]
+        )
     except:
         running = False
     if running:
-        print(PACKAGE+" is already running", pid)
+        print(PACKAGE + " is already running", pid)
         session = device.attach(pid)
         script = session.create_script(jscode)
     else:
@@ -151,14 +166,15 @@ if __name__ == "__main__":
         script = session.create_script(jscode)
         device.resume(pid)
     print("QQ running!! pid = %d" % pid)
-    
+
     def on_message(message, data):
         if message["type"] == "send":
-            toprint=message["payload"]
+            toprint = message["payload"]
         else:
-            toprint=message
-        toprint=str(toprint)
+            toprint = message
+        toprint = str(toprint)
         print(toprint)
+
     script.on("message", on_message)
     script.load()
     print("Frida script injected.")
