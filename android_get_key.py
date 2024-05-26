@@ -1,3 +1,4 @@
+from typing import Optional
 import frida
 import sys
 import platform
@@ -11,7 +12,7 @@ PACKAGE = "com.tencent.mobileqq"
 
 # OPTIONS END
 
-ON_TERMUX: bool = None
+ON_TERMUX: Optional[bool] = None
 def isOnTermux() -> bool:
     global ON_TERMUX
     if ON_TERMUX is not None:
