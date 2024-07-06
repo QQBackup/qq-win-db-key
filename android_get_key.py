@@ -135,10 +135,10 @@ if __name__ == "__main__":
 
     if isOnTermux():
         device = frida.get_remote_device()
-        pid_command = "su -c pidof " + PACKAGE
+        pid_command = f"su -c 'pidof {PACKAGE}'"
     else:
         device = frida.get_usb_device()
-        pid_command = "adb shell su -c pidof " + PACKAGE
+        pid_command = f"adb shell su -c 'pidof {PACKAGE}'"
     running = True
     try:
         pid = int(
