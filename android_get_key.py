@@ -3,7 +3,7 @@ import frida
 import sys
 import platform
 import os
-import sys
+import functools
 import subprocess
 
 # OPTIONS
@@ -12,13 +12,8 @@ PACKAGE = "com.tencent.mobileqq"
 
 # OPTIONS END
 
-ON_TERMUX: Optional[bool] = None
-
-
+@functools.cache
 def isOnTermux() -> bool:
-    global ON_TERMUX
-    if ON_TERMUX is not None:
-        return ON_TERMUX
     if (
         platform.system() == "Linux"
         and "ANDROID_ROOT" in os.environ.keys()
@@ -27,9 +22,7 @@ def isOnTermux() -> bool:
             or ("TERMUX_VERSION" in os.environ.keys())
         )
     ):
-        ON_TERMUX = True
         return True
-    ON_TERMUX = False
     return False
 
 
@@ -132,7 +125,7 @@ if __name__ == "__main__":
     print("请勿使用 x86 或 x64 系统上的安卓模拟器。")
     print("适用版本：")
     print("https://downv6.qq.com/qqweb/QQ_1/android_apk/qq_8.9.58.11050_64.apk")
-    print("https://github.com/Young-Lord/QQ-History-Backup/issues/9")
+    print("https://github.com/QQBackup/QQ-History-Backup/issues/9")
     print(
         """Termux 环境具体命令：
     sudo friendly # 重命名后的 frida-server

@@ -30,7 +30,7 @@ su -c setenforce 0
 下载 hook 脚本：
 
 ```shell
-wget https://github.com/Young-Lord/qq-win-db-key/raw/master/android_get_key.py
+wget https://github.com/QQBackup/qq-win-db-key/raw/master/android_get_key.py
 ```
 
 ### PC
@@ -81,7 +81,7 @@ python android_get_key.py 8.9.58
 
 需要授予手机QQ读写存储权限
 
-下载`https://github.com/Young-Lord/qq-win-db-key/raw/master/android_dump.js`
+下载`https://github.com/QQBackup/qq-win-db-key/raw/master/android_dump.js`
 
 如果先前已经运行过，则先删除上一次运行生成的`/sdcard/Download/plaintext.db`
 

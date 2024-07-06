@@ -3,7 +3,7 @@ import frida
 import sys
 import platform
 import os
-import sys
+import functools
 import subprocess
 
 # OPTIONS
@@ -12,13 +12,8 @@ PACKAGE = "com.tencent.mobileqq"
 
 # OPTIONS END
 
-ON_TERMUX: Optional[bool] = None
-
-
+@functools.cache
 def isOnTermux() -> bool:
-    global ON_TERMUX
-    if ON_TERMUX is not None:
-        return ON_TERMUX
     if (
         platform.system() == "Linux"
         and "ANDROID_ROOT" in os.environ.keys()
@@ -27,9 +22,7 @@ def isOnTermux() -> bool:
             or ("TERMUX_VERSION" in os.environ.keys())
         )
     ):
-        ON_TERMUX = True
         return True
-    ON_TERMUX = False
     return False
 
 
