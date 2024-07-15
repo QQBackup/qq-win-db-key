@@ -22,7 +22,7 @@
 
 使用`tail`命令（仅 Linux）：`tail -c +1025 nt_msg.db > nt_msg.clean.db`
 
-使用 Python：`python -c "open('nt_msg.clean.db','wb').write(open('README.md','rb').read()[1024:])"`
+使用 Python：`python -c "open('nt_msg.clean.db','wb').write(open('nt_msg.db','rb').read()[1024:])"`
 
 完成后，得到`nt_msg.clean.db`文件。
 
@@ -65,4 +65,4 @@ PRAGMA cipher = 'aes-256-cbc';
 
 以下命令适用于Linux环境下的Bash等shell，Windows下可使用Git Bash等代替。
 
-`sqlcipher db "pragma key = 'pass'; pragma kdf_iter = 4000" .d | tail +2 | sqlite3 nt_msg.decrypt.db`
+`sqlcipher nt_msg.clean.db "pragma key = 'pass'; pragma kdf_iter = 4000; pragma cipher_hmac_algorithm = HMAC_SHA1;" .d | tail +2 | sqlite3 nt_msg.decrypt.db`
