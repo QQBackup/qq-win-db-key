@@ -1,10 +1,44 @@
 # Android
 
-## 基础环境
+## 方法1（推荐）
+
+### 获取聊天记录文件
+
+如果手机已获得 root 权限，聊天记录可在以下路径找到。
+
+```plain
+/data/user/0/com.tencent.mobileqq/databases/nt_db/nt_qq_{QQ_UID_hash}/nt_msg.db
+```
+
+你需要记录下你的{QQ_UID_hash}。
+
+#### QQ Hash 的获取
+
+1. 猜测
+
+    如果你登录的 QQ 账号数量不多，可以通过猜测的方式获取。
+
+2. 数据库读取
+
+    你需要在数据库`/data/user/0/com.tencent.mobileqq/databases/beacon_db_com.tencent.mobileqq`文件中查找你的 QQ 号对应的 uid，形式如
+    `"uid":"u_mIicAReWrdCBGkST6TXH7A"`，随后对这串字符串取`md5`即可得到你的`QQ_UID_hash`（即`md5("u_mIicAReWrdCBGkST6TXH7A")`）。
+
+### 获取密钥
+
+使用`010editor`或者其他二进制查看工具打开`nt_msg.db`文件，将文件头部跟随在`QQ_NT DB`后的可读字符串复制，形如`6tPaJ9GP`，记为`rand`。
+
+此时可以计算出数据库密钥为
+```plain
+md5(QQ_UID_hash + rand)
+```
+
+## 其他方式（需 root）
+
+### 基础环境
 
 以下环境配置任选一种即可。注意，每种方法都要求您拥有手机的 root 权限。
 
-### Termux
+#### Termux
 
 首先，安装 Termux，换源并执行`pkg up`、`termux-setup-storage`
 
@@ -33,15 +67,15 @@ su -c setenforce 0
 wget https://github.com/QQBackup/qq-win-db-key/raw/master/android_get_key.py
 ```
 
-### PC
+#### PC
 
 你也可以在电脑端使用`adb`等来避免在手机端配置`Termux`。具体过程略。
 
-## 开跑
+### 开跑
 
 > 这几条并不需要按顺序执行，建议直接执行“导出数据库”
 
-### 获取数据库密钥
+#### 获取数据库密钥
 
 打开 QQ 并完成登录，进入主界面。将 QQ 切换到后台后继续下一步。
 
@@ -67,11 +101,11 @@ python android_get_key.py 8.9.58
 
 接下来，可以确认命令行是否给出数据库密钥。
 
-### 打开数据库
+#### 打开数据库
 
 请参考 [基础教程 - NTQQ 解密数据库](基础教程%20-%20NTQQ%20解密数据库.md)。
 
-### 导出数据库
+#### 导出数据库
 
 > 该部分内容来源于[Android QQ NT 版数据库解密](https://blog.yllhwa.com/2023/09/29/Android%20QQ%20NT%20%E7%89%88%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A7%A3%E5%AF%86/)，由[@yllhwa](https://github.com/yllhwa)贡献。
 
@@ -89,7 +123,7 @@ python android_get_key.py 8.9.58
 
 如果一切顺利，已解密的`plaintext.db`将会在至少10秒后导出至`/sdcard/Download/plaintext.db`。
 
-## 失败记录
+### 失败记录
 
 根据字符串依次找到 sqlite3CodecQueryParameters，xref 找到 attachFunc，另外一个 xref 就是 openDatabase
 
