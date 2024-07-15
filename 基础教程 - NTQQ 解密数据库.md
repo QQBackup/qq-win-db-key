@@ -61,6 +61,8 @@ PRAGMA cipher = 'aes-256-cbc';
 
 > 参考资料：[找到了Linux QQ NT聊天记录数据库密钥](https://gist.github.com/bczhc/c0f29920d4e9d0cc6d2c49f7f2fb3a78)
 
-仅 Linux（Windows 下 sqlcipher 的可执行文件较难编译）
+对于Linux，从包管理器安装`sqlcipher`包；对于Windows，从[QQBackup/sqlcipher-github-actions](https://github.com/QQBackup/sqlcipher-github-actions/releases/tag/latest)下载SQLCipher可执行文件。
+
+以下命令适用于Linux环境下的Bash等shell，Windows下可使用Git Bash等代替。
 
 `sqlcipher db "pragma key = 'pass'; pragma kdf_iter = 4000" .d | tail +2 | sqlite3 nt_msg.decrypt.db`
