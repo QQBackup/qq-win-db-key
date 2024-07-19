@@ -6,13 +6,25 @@
 
 经测试适用于`9.0.65`与`9.0.75`版本，更低版本可能无法使用此方法。
 
-注意以下的`md5`函数返回结果均为 32 位，字符均为小写，在Python中等价于以下函数：`def md5(s): i=__import__('hashlib').md5();i.update(s.encode('utf8'));return i.hexdigest()`
+以下的`md5`函数返回结果均为 32 位，字符均为小写，在Python中等价于以下函数：`def md5(s): i=__import__('hashlib').md5();i.update(s.encode('utf8'));return i.hexdigest()`
 
 为了方便起见，假设 QQ 号（表示为`uin`）为`390251789`，`uid`为`u_mIicAReWrdCB-kST6TXH7A`。
 
+一切以`/data/user/0/com.tencent.mobileqq/`开头的路径均表示root后可以访问到的绝对路径，若为处理备份文件，则此路径可能有所不同。
+
+### 获取uid
+
+获取`uid`有多种方式，任意一种均可。
+
+- 将`/data/user/0/com.tencent.mobileqq/databases/beacon_db_com.tencent.mobileqq`文件作为纯文本文件打开，查找你的 QQ 号对应的`uid`，形式如`"home_uin": "390251789","uid":"u_mIicAReWrdCB-kST6TXH7A"`，其中`u_mIicAReWrdCB-kST6TXH7A`即为`uid`。
+- 在`/data/user/0/com.tencent.mobileqq/files/uid/`目录下，可见到文件名形如`390251789###u_mIicAReWrdCB-kST6TXH7A`的若干个文件，其中`u_mIicAReWrdCB-kST6TXH7A`即为`uid`。
+- 若使用了[QAuxiliary](https://github.com/cinit/QAuxiliary)模块，可以通过打开`[辅助功能]聊天和消息-[消息]转发消息点头像查看详细信息`功能，合并转发由自己发送的消息，查看消息的`senderUid`属性获取，详见[#32](https://github.com/QQBackup/qq-win-db-key/issues/32#issue-2418610093)。
+
+对`uid`取`md5`即可得到`QQ_UID_hash`（即`QQ_UID_hash = md5(uid) = md5("u_mIicAReWrdCB-kST6TXH7A") = "255c42fc0f4d295678e6ff0135fcf5dd"`）
+
 ### 获取聊天记录文件
 
-如果手机已获得 root 权限，聊天记录可在以下路径找到。若为处理备份文件，则此路径在`nt_db`前的部分可能略有不同。
+聊天记录可在以下路径找到：
 
 ```plain
 /data/user/0/com.tencent.mobileqq/databases/nt_db/nt_qq_{QQ_path_hash}/nt_msg.db
@@ -25,11 +37,6 @@
     如果你登录的 QQ 账号数量不多，可以通过文件更新时间、文件大小等猜测。
 
 2. 计算
-
-    你需要在数据库`/data/user/0/com.tencent.mobileqq/databases/beacon_db_com.tencent.mobileqq`文件中查找你的 QQ 号对应的`uid`，形式如
-    `"home_uin": "390251789","uid":"u_mIicAReWrdCB-kST6TXH7A"`，其中`u_mIicAReWrdCB-kST6TXH7A`即为`uid`。
-    
-    对`uid`取`md5`即可得到`QQ_UID_hash`（即`QQ_UID_hash = md5(uid) = md5("u_mIicAReWrdCB-kST6TXH7A") = "255c42fc0f4d295678e6ff0135fcf5dd"`）
     
     对`QQ_UID_hash`进行如下运算即可得到`QQ_path_hash`：`QQ_path_hash = md5(md5(uid) + "nt_kernel") = md5("255c42fc0f4d295678e6ff0135fcf5ddnt_kernel") = "b69bfb8e74137f4e4253d1af3e99493a"
     
