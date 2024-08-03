@@ -240,5 +240,4 @@ def on_destroyed():
 script.on("message", on_message)
 script.on("destroyed", on_destroyed)
 script.load()
-print("hooked.")
-sys.stdin.read()
+input("hooked.")
