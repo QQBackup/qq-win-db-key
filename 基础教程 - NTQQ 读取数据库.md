@@ -2,4 +2,4 @@
 
 以下以`nt_msg.db`代指已解密的数据库文件。
 
-目前已知消息格式为`protobuf`，相关解密代码可以参考[这两条issue评论](https://github.com/QQBackup/QQ-History-Backup/issues/9#issuecomment-1929105881)，完整实现目前暂时没有，待补充。
+目前已知消息格式为`protobuf`，相关解密代码可以参考[这份Python代码](https://github.com/QQBackup/QQ-History-Backup/issues/9#issuecomment-1929105881)与[这份protobuf定义](https://github.com/QQBackup/qq-win-db-key/issues/38#issuecomment-2294619828)，完整实现暂无，待补充。
