@@ -66,3 +66,7 @@ PRAGMA cipher = 'aes-256-cbc';
 以下命令适用于Linux环境下的Bash等shell，Windows下可使用Git Bash等代替。
 
 `sqlcipher nt_msg.clean.db "pragma key = 'pass'; pragma kdf_iter = 4000; pragma cipher_hmac_algorithm = HMAC_SHA1;" .d | tail +2 | sqlite3 nt_msg.decrypt.db`
+
+## 读取数据库内容
+
+请参考 [基础教程 - NTQQ 读取数据库](基础教程%20-%20NTQQ%20读取数据库.md)。
