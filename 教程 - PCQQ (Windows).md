@@ -40,9 +40,20 @@
 
 ## 读取信息
 
-<https://github.com/Akegarasu/qmsg-unpacker> （分析原理，Golang）
+### 不太可用:
+[qmsg_unpakcer](https://github.com/Akegarasu/qmsg-unpacker)
+golang 写的, 没 example
 
-<https://github.com/saucer-man/qq_msg_decode> （可直接运行，Python）
+### 可用:
+[qq_msg_decode](https://github.com/saucer-man/qq_msg_decode)
+python 重写的上面那个玩意, 能跑, 不过依然遗失了一些字段
+
+### 在写了
+
+> 夹带私货
+
+[qqdb-decode](https://github.com/shenjackyuanjie/qqdb-decode)
+用 rust 重写的上面的玩意 (是这样的的, 重写套娃)
 
 ## 致谢（询问一切有关编解码、数据格式的问题前必看！！）
 
