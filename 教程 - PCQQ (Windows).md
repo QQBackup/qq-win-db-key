@@ -64,6 +64,12 @@ python 重写的 qmsg_unpakcer, 带有可以直接运行的文件 不过依然�
 
 <https://github.com/Akegarasu/qmsg-unpacker>
 
+## 疑难解答
+
+> Q: 报错：frida.NotSupportedError: unexpectedly failed with error code: 0x00000057 ([#41](https://github.com/QQBackup/qq-win-db-key/issues/41))
+
+可能是由于 Windows 10 与 Frida 16.5 不兼容，可以尝试降级到 Frida 16.4.10 版本。
+
 ## 另一种方式
 
 x64dbg hook sqlite3_key
