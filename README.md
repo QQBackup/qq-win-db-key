@@ -1,5 +1,7 @@
 # 解密 QQ 数据库
 
+[在网站上阅读](https://qq.sbcnm.top/)
+
 ## 寻求合作者
 
 欢迎一切 能够实现任何相关数据解析算法/乐意适配其他平台者 参与本项目以及 [QQ-History-Backup](https://github.com/QQBackup/QQ-History-Backup/tree/dev) 的开发！[邮箱](mailto:ly-niko@qq.com)，或者直接开 PR/issue。文档的写作风格随意（但建议图片的 替代文本 和 文件名 好好写），也可以只加入一个指向你的 仓库/博客 等的链接。
