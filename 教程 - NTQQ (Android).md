@@ -37,9 +37,9 @@
     如果你登录的 QQ 账号数量不多，可以通过文件更新时间、文件大小等猜测。
 
 2. 计算
-    
+
     对`QQ_UID_hash`进行如下运算即可得到`QQ_path_hash`：`QQ_path_hash = md5(md5(uid) + "nt_kernel") = md5("255c42fc0f4d295678e6ff0135fcf5ddnt_kernel") = "b69bfb8e74137f4e4253d1af3e99493a"
-    
+
     则聊天记录路径为`/data/user/0/com.tencent.mobileqq/databases/nt_db/nt_qq_b69bfb8e74137f4e4253d1af3e99493a/nt_msg.db`
 
 ### 获取密钥
