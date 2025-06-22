@@ -62,9 +62,10 @@ var funcName = new NativeFunction(name_function, 'pointer', ['pointer', 'pointer
 Interceptor.attach(key_function, {
     onEnter: function (args, state) {
     
-        console.log("[+] key found:");
+        console.log("[-] sqlite3_key called");
         var dbName = funcName(args[0], NULL).readUtf8String();
         if (dbName.replaceAll('/', '\\\\').split('\\\\').pop().toLowerCase() == 'Msg3.0.db'.toLowerCase() || false) {
+            console.log("[+] Msg3.0.db key found:");
             //console.log("¦- db: " + args[0]);
             console.log("¦- nKey: " + args[2].toInt32());
             //console.log("¦- pkey: " + args[1]);
