@@ -1,0 +1,94 @@
+[tool.poetry]
+name = "qq-nt-db"
+version = "0.1.0"
+description = "QQ and NTQQ database decryption and analysis tools"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+license = "MIT"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+
+[tool.poetry.scripts]
+test = "pytest:main"
+tests = "pytest:main"
+
+[tool.pytest.ini_options]
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+python_classes = ["Test*", "*Tests"]
+python_functions = ["test_*"]
+
+# Output and reporting
+addopts = [
+    "-v",                        # Verbose output
+    "--strict-markers",          # Ensure all markers are registered
+    "--tb=short",               # Short traceback format
+    "--cov=src",                # Coverage for src directory
+    "--cov-report=html",        # HTML coverage report
+    "--cov-report=xml",         # XML coverage report for CI
+    "--cov-report=term-missing", # Terminal report with missing lines
+    # "--cov-fail-under=80",    # Uncomment when you have source code
+]
+
+# Custom markers
+markers = [
+    "unit: Unit tests that test individual components",
+    "integration: Integration tests that test multiple components",
+    "slow: Tests that take a long time to run",
+]
+
+# Warnings
+filterwarnings = [
+    "error",                    # Turn warnings into errors
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/virtualenv/*",
+    "*/.venv/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+# Reporting
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 0  # Set to 80 when you have source code
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
