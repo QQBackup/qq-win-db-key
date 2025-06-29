@@ -1,2 +1,45 @@
 *.db
 *.db.tmp
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.pyc
+__pycache__/
+.tox/
+.nox/
+.hypothesis/
+*.cover
+*.py,cover
+.coverage.*
+
+# Poetry
+dist/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+virtualenv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+build/
+*.egg-info/
+*.egg
+*.whl
+pip-wheel-metadata/
+
+# Claude settings
+.claude/*
