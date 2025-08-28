@@ -16,6 +16,14 @@
 
 ## 移除无关文件头
 
+由于`nt_msg.db`文件前面有 1024 字节的文件头，导致通常的 SQLite 无法识别。为了使 SQLite 支持读写此类数据库，需要使用以下两种方案中任意一种。
+
+`复制至新文件`方法：优点为可以直接得到一个正常的 SQLite 3 数据库，缺点为需要完整读写整个数据库，导致存储空间占用、存储设备损耗，并且不能直接读写QQ数据目录下的数据库文件。
+
+`使用VFS扩展`方法：解决了`复制至新文件`方法的缺点，但是需要在打开数据库时进行额外操作。
+
+### 复制至新文件
+
 首先，将`nt_msg.db`文件删除前1024字节，这可以通过以下方式完成：
 
 使用二进制编辑器：Android 下的 [MT 管理器](https://d.binmt.cc/)（需要付费）、Windows 下的 [HxD](https://mh-nexus.de/en/hxd/) 等软件均可使用，细节从略。
@@ -25,6 +33,16 @@
 使用 Python：`python -c "open('nt_msg.clean.db','wb').write(open('nt_msg.db','rb').read()[1024:])"`
 
 完成后，得到`nt_msg.clean.db`文件。
+
+### 使用VFS扩展
+
+对于详细教程，请参考[此文档](https://github.com/artiga033/ntdb_unwrap/tree/main/sqlite_extension#%E7%94%A8%E6%B3%95)，以下只介绍大概流程。
+
+首先，下载对应平台的动态链接库文件，以下假设文件名为`libsqlite_ext_ntqq_db.so`。不同平台下的文件名可能不同，请在以下流程中使用对应文件名。请勿重命名该文件。
+
+若使用`sqlcipher`命令行，在读取数据库阶段，在运行`.open nt_msg.db`之前，运行`.load libsqlite_ext_ntqq_db.so`。
+
+若使用`DB Browser for SQLite`等图形化界面，首先执行`新建内存数据库`，再执行`工具->加载扩展`，选择`libsqlite_ext_ntqq_db.so`。成功加载后，再打开`nt_msg.db`即可。
 
 ## 打开数据库
 
