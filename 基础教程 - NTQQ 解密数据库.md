@@ -44,6 +44,8 @@
 
 若使用`DB Browser for SQLite`等图形化界面，首先执行`新建内存数据库`，再执行`工具->加载扩展`，选择`libsqlite_ext_ntqq_db.so`。成功加载后，再打开`nt_msg.db`即可。
 
+与上述扩展原理相似的还有[此扩展](https://github.com/zqhong/sqlite_header_vfs)，基于 C 语言（而非上述扩展使用的 Rust）。二者效果相同，使用方式略有差别，可自行阅读对应文档并尝试使用。
+
 ## 打开数据库
 
 打开数据库可以通过 [SQLiteStudio](https://sqlitestudio.pl/)、[DB Browser for SQLite](https://sqlitebrowser.org/) 或`sqlcipher`命令行 等工具完成。
