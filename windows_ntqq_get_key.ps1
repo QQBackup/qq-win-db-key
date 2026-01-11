@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Finds the LEA instruction and function RVA that reference the nt_sqlite3_key_v2 string in wrapper.node,
     and launches QQ with a debugger to extract the encryption key.
@@ -52,9 +52,28 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
-# Ensure UTF-8 console output for Chinese text display
-# Works for both local execution and irm | iex scenarios
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+#region Reload Script as UTF-8, if running locally
+if ($PSVersionTable.PSVersion.Major -le 5) {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+} else {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    if ([Console]::InputEncoding) { [Console]::InputEncoding = [System.Text.Encoding]::UTF8 }
+}
+$currentCommand = $MyInvocation.MyCommand
+if ($PSVersionTable.PSVersion.Major -le 5 -and 
+    $currentCommand.CommandType -eq 'ExternalScript' -and 
+    $currentCommand.Path) {
+    try {
+        $scriptContent = [System.IO.File]::ReadAllText($currentCommand.Path, [System.Text.Encoding]::UTF8)
+        $scriptBlock = [scriptblock]::Create($scriptContent)
+        & $scriptBlock @PSBoundParameters
+        exit $LASTEXITCODE
+    }
+    catch {
+        Write-Warning "UTF-8 Auto-Reload Failed: $_"
+    }
+}
+#endregion
 
 #region P/Invoke Definitions for Debugging
 
@@ -1208,8 +1227,8 @@ if (-not $qqInfo) {
 }
 
 # Create log delegates that write to host with appropriate colors
-$logAction = [Action[string]]{ param($msg) Write-Host $msg -ForegroundColor Cyan }
-$logVerboseAction = [Action[string]]{ param($msg) Write-Verbose $msg }
+$logAction = [Action[string]] { param($msg) Write-Host $msg -ForegroundColor Cyan }
+$logVerboseAction = [Action[string]] { param($msg) Write-Verbose $msg }
 
 # Create and run the key extractor
 $extractor = New-Object DebugApi.KeyExtractor(
