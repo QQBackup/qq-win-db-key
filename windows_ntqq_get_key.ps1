@@ -52,6 +52,10 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
+# Ensure UTF-8 console output for Chinese text display
+# Works for both local execution and irm | iex scenarios
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 #region P/Invoke Definitions for Debugging
 
 $DebugApiCode = @'
