@@ -53,3 +53,27 @@
 ## 另一种解密方式、拓展应用
 
 [QQ NT Windows 数据库解密+图片/文件清理](https://github.com/Mythologyli/qq-nt-db)：本仓库使用 IDA debugger 完成了逆向分析到解密的全过程，并实现了图片与文件清理。
+
+## PowerShell 一键脚本
+
+[windows_ntqq_get_key.ps1](./windows_ntqq_get_key.ps1) 是一个纯 PowerShell 实现的反编译与动态调试方案，效果等同于上面的 IDA 方法，可以一键使用。
+
+可将脚本下载至本地运行，或者直接在 PowerShell 中执行以下命令：
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm https://raw.githubusercontent.com/QQBackup/qq-win-db-key/refs/heads/feat/pwsh-script-windows/windows_ntqq_get_key.ps1 | iex
+```
+
+由于一些原因，中文系统运行时可能存在乱码问题，建议使用 PowerShell 7，或者选择下载到本地运行。
+
+另外，本地运行时，支持提供额外的参数：
+
+```powershell
+# 支持的参数
+# -Verbose : 输出详细信息
+# -NoDebugForKey: 只执行静态分析得到关键函数地址，不进行动态调试。
+.\windows_ntqq_get_key.ps1
+```
+
+脚本执行后会打开QQ窗口，正常登录即可，获取到 key 后会自动关闭 QQ 进程。为了能够登录目标账号，若该账号已登录你可能需要先退出登录。
