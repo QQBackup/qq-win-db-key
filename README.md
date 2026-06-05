@@ -37,6 +37,11 @@
 
 如果后续本项目无人维护，可以自行创建新仓库并接手。请保留原作者信息（比如 commit 作者），建议在[本仓库的 issues](https://github.com/QQBackup/qq-win-db-key/issues) 宣传。
 
+## 相关项目
+
+- [shuakami/qq-chat-exporter](https://github.com/shuakami/qq-chat-exporter/)：基于 NapCatQQ 的聊天记录导出工具。
+
 ## 致谢
 
 - [看雪](https://bbs.kanxue.com/search-qq-1-144.htm)：保留了二十年来的帖子、附件，大大便利了旧版应用分析。
+
