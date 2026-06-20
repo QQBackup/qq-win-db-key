@@ -945,7 +945,8 @@ async function doLaunch() {
   document.getElementById('btn-launch').disabled = true
   document.getElementById('btn-launch').textContent = '启动中...'
   const r = await fetch('/api/launch', {method:'POST'}).then(r=>r.json())
-  if (!r.ok) { alert(r.err); document.getElementById('btn-launch').disabled=false }
+  if (!r.ok) { alert(r.err); document.getElementById('btn-launch').disabled=false; return }
+  startPoll()
 }
 
 
