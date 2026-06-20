@@ -16,7 +16,7 @@ WRAPPER = "/Applications/QQ.app/Contents/Resources/app/wrapper.node"
 
 # qq_key_extractor.py 内嵌内容，运行时写到临时文件，用完自动清理
 _EXTRACTOR_SRC = r'''
-import lldb, os, struct, threading
+import lldb, os, struct, threading, time
 
 _func_va = None
 WRAPPER = "/Applications/QQ.app/Contents/Resources/app/wrapper.node"
@@ -46,8 +46,8 @@ def _find_func_va(path):
                 s += 80
         off += csz
     txt = sl[tf:tf+ts]
-    i1 = data.find(b"nt_sqlite3_key_v2: db=")
-    i2 = data.find(b"nt_sqlite3_key_v2: no key")
+    i1 = data.find(b"nt_sqlite3_key_v2: db=", arm64)
+    i2 = data.find(b"nt_sqlite3_key_v2: no key", arm64)
     if i1 < 0 or i2 < 0: return None
     va1, va2 = i1-arm64, i2-arm64
     def adc(buf, imm):
@@ -72,45 +72,15 @@ def _key_callback(frame, bp_loc, extra_args, internal_dict):
     if err.Success():
         try: key = raw.decode("ascii")
         except: key = raw.hex()
+        with open("/tmp/qq_key_result.txt", "w") as f: f.write(key)
         print(f"\nKEY    : {key}", flush=True)
         print(f"LENGTH : {x3.GetValueAsUnsigned()}", flush=True)
     return False  # don't stop; process continues automatically
 
-def _watch_for_wrapper(debugger):
-    """Background thread: listen for wrapper.node module-load event, then set bp."""
-    global _func_va
-    target = debugger.GetSelectedTarget()
-    if not target.IsValid():
-        print("[qq-key] ERROR: no valid target", flush=True)
-        return
-    # Subscribe to module-load events on the target broadcaster
-    listener = lldb.SBListener("qq_wrapper_watcher")
-    target.GetBroadcaster().AddListener(listener, lldb.SBTarget.eBroadcastBitModulesLoaded)
-    event = lldb.SBEvent()
-    for _ in range(180):  # 90s timeout (180 x 0.5s)
-        if not listener.WaitForEvent(1, event):
-            continue
-        num = lldb.SBTarget.GetNumModulesFromEvent(event)
-        for i in range(num):
-            mod = lldb.SBTarget.GetModuleAtIndexFromEvent(i, event)
-            if mod.GetFileSpec().GetFilename() != "wrapper.node":
-                continue
-            load_addr = mod.GetObjectFileHeaderAddress().GetLoadAddress(target)
-            if load_addr == lldb.LLDB_INVALID_ADDRESS:
-                continue
-            bp_addr = load_addr + _func_va
-            # Set breakpoint while process is running — lldb handles patching atomically
-            bp = target.BreakpointCreateByAddress(bp_addr)
-            bp.SetScriptCallbackFunction("qq_key_extractor._key_callback")
-            print(f"\n[qq-key] OK wrapper.node loaded, bp=0x{bp_addr:x} (id={bp.GetID()})", flush=True)
-            print("[qq-key] 请在 QQ 随便点击（登录按钮或任意聊天），密钥自动显示", flush=True)
-            return
-    print("[qq-key] ERROR: wrapper.node 加载超时（90s）", flush=True)
-
 def set_breakpoint(debugger, command, result, internal_dict):
-    """Manual fallback: qq-setbp"""
+    """qq-setbp: set bp on nt_sqlite3_key_v2 in already-loaded wrapper.node"""
     global _func_va
-    if _func_va is None: result.SetError("_func_va not set"); return
+    if _func_va is None: result.SetError("VA not computed"); return
     target = debugger.GetSelectedTarget()
     for i in range(target.GetNumModules()):
         mod = target.GetModuleAtIndex(i)
@@ -120,9 +90,10 @@ def set_breakpoint(debugger, command, result, internal_dict):
         bp_addr = load_addr + _func_va
         bp = target.BreakpointCreateByAddress(bp_addr)
         bp.SetScriptCallbackFunction("qq_key_extractor._key_callback")
-        print(f"[qq-key] 断点已设置 (id={bp.GetID()}) bp=0x{bp_addr:x}", flush=True)
+        with open("/tmp/qq_bp_set.txt", "w") as f: f.write(f"0x{bp_addr:x}")
+        print(f"\n[qq-key] OK 断点已设置 bp=0x{bp_addr:x} (id={bp.GetID()})", flush=True)
         return
-    result.SetError("wrapper.node not loaded yet")
+    result.SetError("wrapper.node not in module list")
 
 def __lldb_init_module(debugger, internal_dict):
     global _func_va
@@ -132,10 +103,8 @@ def __lldb_init_module(debugger, internal_dict):
     _func_va = va
     print(f"[qq-key] VA=0x{va:x}", flush=True)
     debugger.HandleCommand("command script add -f qq_key_extractor.set_breakpoint qq-setbp")
-    # Start background thread to watch for wrapper.node module-load event
-    t = threading.Thread(target=_watch_for_wrapper, args=(debugger,), daemon=True)
-    t.start()
-    print("[qq-key] 自动监听 wrapper.node 加载中，无需手动操作", flush=True)
+    with open("/tmp/qq_script_ready.txt", "w") as f: f.write(f"0x{va:x}")
+    print("[qq-key] 就绪", flush=True)
 '''
 
 def _extractor_path():
@@ -158,6 +127,7 @@ _init_phase = "signed" if _is_adhoc() else "idle"
 S = {"phase": _init_phase, "log": [], "key": ""}
 EX = {"running": False, "progress": 0.0, "status": "", "error": ""}
 _lldb = None
+_qq_pid = None   # PID of main QQ process (Contents/MacOS/QQ)
 
 # ── 二进制分析 ─────────────────────────────────────────────────────────────────
 
@@ -185,8 +155,8 @@ def _find_va(path):
                 s += 80
         off += csz
     txt = sl[tf:tf+ts]
-    i1 = data.find(b"nt_sqlite3_key_v2: db=")
-    i2 = data.find(b"nt_sqlite3_key_v2: no key")
+    i1 = data.find(b"nt_sqlite3_key_v2: db=", arm64)
+    i2 = data.find(b"nt_sqlite3_key_v2: no key", arm64)
     if i1 < 0 or i2 < 0: raise ValueError("diagnostic strings not found")
     va1, va2 = i1-arm64, i2-arm64
     def adc(buf, imm):
@@ -307,21 +277,100 @@ def _lldb_send(cmd):
         _lldb.stdin.write(cmd+"\n"); _lldb.stdin.flush()
 
 def _on_attached():
-    """Called when QQ process stops at initial attach. Don't continue yet — wait for script."""
+    """Called when QQ process stops at attach. Immediately continue — polling thread handles BP."""
     if S["phase"] != "launching":
         return
-    S["phase"] = "attached"
-    _log("[*] QQ 已附加，等待脚本加载并注册 wrapper.node 监听...")
+    S["phase"] = "running"
+    _log("[*] QQ 已附加，继续运行，等待 wrapper.node 加载...")
+    time.sleep(0.3)
+    _lldb_send("process continue")
+
+def _poll_key_file():
+    """Poll /tmp/qq_key_result.txt as backup for buffered stdout KEY detection."""
+    for _ in range(1200):  # 10 min
+        time.sleep(0.5)
+        if S["phase"] in ("done", "idle", "signed"):
+            return
+        try:
+            with open("/tmp/qq_key_result.txt") as f:
+                key = f.read().strip()
+            if key:
+                S["key"] = key
+                S["phase"] = "done"
+                _log(f"[+] 密钥已获取（文件信号）：{key}")
+                return
+        except FileNotFoundError:
+            pass
 
 def _launch_watchdog():
-    """Fallback: if phase stays 'launching' for 25s, force-advance."""
-    time.sleep(25)
+    """Log a hint if phase stays 'launching' for >120s."""
+    time.sleep(120)
     if S["phase"] == "launching":
-        _log("[~] 未检测到 lldb 附加信号，强制继续...")
-        S["phase"] = "attached"
-        time.sleep(0.3)
-        _lldb_send("process continue")
-        S["phase"] = "running"
+        _log("[~] attach 进行中（Electron 进程需要较长时间），请继续等待...")
+
+def _monitor_wrapper():
+    """Wait for QQ PID, then for attach to complete, then detect wrapper.node and set BP."""
+    # Phase 0: wait for _qq_pid to be set (max 30s)
+    for _ in range(60):
+        time.sleep(0.5)
+        if S["phase"] in ("waiting", "done", "signed", "idle"):
+            return
+        if _qq_pid:
+            break
+    else:
+        _log("[!] 超时：未找到 QQ 主进程")
+        return
+
+    # Phase 1: wait for phase→"running" (stdout-triggered by _on_attached).
+    # Fallback: Electron attach takes ~60-90s; after 110s force "running".
+    pid_found_t = time.time()
+    for i in range(360):  # up to 3 min
+        time.sleep(0.5)
+        ph = S["phase"]
+        if ph in ("waiting", "done", "signed", "idle"):
+            return
+        if ph == "running":
+            break
+        elapsed = int(time.time() - pid_found_t)
+        if elapsed > 110:
+            _log("[*] attach 耗时较长，直接推进（QQ 进程较复杂属正常）...")
+            S["phase"] = "running"
+            break
+        if elapsed > 0 and elapsed % 20 == 0 and i % 2 == 0:
+            _log(f"[~] 正在等待 lldb attach 完成（已等 {elapsed}s，Electron 进程通常需要 60-90s）...")
+    else:
+        _log("[!] 超时：未能完成 attach")
+        return
+
+    # Phase 2: lsof-poll for wrapper.node (up to 120s)
+    for _ in range(240):
+        time.sleep(0.5)
+        ph = S["phase"]
+        if ph in ("waiting", "done", "signed", "idle"):
+            return
+        r = subprocess.run(
+            ["lsof", f"-p{_qq_pid}", "-n", "-w"],
+            capture_output=True, text=True, timeout=5
+        )
+        if "wrapper.node" in r.stdout:
+            _log(f"[*] wrapper.node 已加载 (PID={_qq_pid})，正在中断并设置断点...")
+            _lldb_send("process interrupt")
+            time.sleep(1.5)
+            _lldb_send("qq-setbp")
+            # Poll /tmp/qq_bp_set.txt — bypasses stdout buffering
+            for _ in range(60):  # 30s
+                time.sleep(0.5)
+                if os.path.exists("/tmp/qq_bp_set.txt"):
+                    _log("[*] 断点已就绪！")
+                    _log("[*] → 若 QQ 显示登录界面：直接点击「登录」按钮")
+                    _log("[*] → 若 QQ 已自动登录（显示聊天列表）：在 QQ 菜单中选择「退出账号」，返回登录界面后再点登录")
+                    _log("[*]   （不要关闭 QQ，直接在 QQ 里操作即可）")
+                    S["phase"] = "waiting"
+                    threading.Thread(target=_poll_key_file, daemon=True).start()
+                    break
+            _lldb_send("process continue")
+            return
+    _log("[!] wrapper.node 未在 120s 内加载")
 
 def _read_lldb():
     global _lldb
@@ -329,18 +378,15 @@ def _read_lldb():
         _log(line.rstrip())
         # Detect process attach ("Process X stopped" or "Process X launched:")
         if S["phase"] == "launching" and "Process" in line and (
-                "launched:" in line or "stopped" in line):
+                "stopped" in line or "launched:" in line):
             _on_attached()
-        # Script fully loaded & SBListener registered → NOW safe to send process continue
-        if "[qq-key] 自动监听" in line and S["phase"] == "attached":
-            time.sleep(0.2)
-            _lldb_send("process continue")
-            S["phase"] = "running"
-            _log("[*] QQ 运行中，等待 wrapper.node 加载（断点将自动设置，无需干预）...")
-        # Background thread inside lldb script set the breakpoint
-        if "[qq-key] OK wrapper.node" in line and S["phase"] == "running":
+        # qq-setbp set the breakpoint (via _monitor_wrapper interrupt)
+        if "[qq-key] OK 断点已设置" in line and S["phase"] == "running":
             S["phase"] = "waiting"
-            _log("[*] 断点就绪！请在 QQ 中随便点击（登录按钮或任意聊天），密钥自动显示")
+            _log("[*] 断点已就绪！")
+            _log("[*] → 若 QQ 显示登录界面：直接点击「登录」按钮")
+            _log("[*] → 若 QQ 已自动登录（显示聊天列表）：在 QQ 菜单中选择「退出账号」，返回登录界面后再点登录")
+            _log("[*]   （不要关闭 QQ，直接在 QQ 里操作即可）")
         if "KEY    :" in line:
             m = re.search(r"KEY\s+:\s+(.+)", line)
             if m: S["key"] = m.group(1).strip(); S["phase"] = "done"
@@ -410,24 +456,51 @@ def sign():
 @app.route("/api/launch",methods=["POST"])
 def launch():
     global _lldb
-    script = _extractor_path()  # 每次重写，确保存在且最新
+    script = _extractor_path()
     try:
         va=_find_va(WRAPPER)
         _log(f"[+] nt_sqlite3_key_v2 VA: 0x{va:x}")
     except Exception as e:
         return jsonify({"ok":False,"err":str(e)})
+    # Clean up stale file signals from a previous run
+    for f in ("/tmp/qq_script_ready.txt", "/tmp/qq_bp_set.txt", "/tmp/qq_key_result.txt"):
+        try: os.remove(f)
+        except FileNotFoundError: pass
+    global _qq_pid
+    _qq_pid = None
     S["phase"]="launching"
-    subprocess.run(["pkill","-x","QQ"],capture_output=True)
-    time.sleep(0.6)
+    S["key"]=""
+    # Kill ALL QQ processes (main + helpers) to ensure a clean start
+    subprocess.run(["pkill","-9","-f","QQ.app"],capture_output=True)
+    time.sleep(1)
+    # Start lldb with only the script import — we will attach by PID once QQ starts
     _lldb=subprocess.Popen(
-        ["lldb","-n","QQ","-w","--one-line",f"command script import {script}"],
+        ["lldb","--one-line",f"command script import {script}"],
         stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
         text=True,bufsize=1)
     threading.Thread(target=_read_lldb,daemon=True).start()
     threading.Thread(target=_launch_watchdog,daemon=True).start()
-    time.sleep(0.4)
-    subprocess.Popen(["open","/Applications/QQ.app"])
-    _log("[*] lldb 正在等待 QQ 启动...")
+
+    def _start_and_attach():
+        global _qq_pid
+        subprocess.Popen(["open","/Applications/QQ.app"])
+        _log("[*] QQ 启动中，正在寻找主进程（Contents/MacOS/QQ）...")
+        for _ in range(40):        # 20s timeout finding the PID
+            time.sleep(0.5)
+            r = subprocess.run(["pgrep","-f","QQ.app/Contents/MacOS/QQ"],
+                               capture_output=True,text=True)
+            pids = [p.strip() for p in r.stdout.strip().split('\n') if p.strip()]
+            if pids:
+                pid = pids[0]
+                _qq_pid = pid
+                _log(f"[*] 找到主进程 PID={pid}，正在 attach...")
+                _lldb_send(f"process attach --pid {pid}")
+                return
+        _log("[!] 未找到 QQ 主进程，请手动重试")
+        S["phase"] = "signed"
+
+    threading.Thread(target=_start_and_attach,daemon=True).start()
+    threading.Thread(target=_monitor_wrapper,daemon=True).start()
     return jsonify({"ok":True})
 
 @app.route("/api/trigger",methods=["POST"])
@@ -810,7 +883,9 @@ header p {
         <div class="step-body">
           <div class="step-title">等待密钥</div>
           <div class="step-desc" id="s3-desc">
-            工具会自动设置断点，完成后请在 QQ 中随便点一下（登录按钮或任意聊天窗口），密钥自动显示。
+            工具自动设置断点后，请在 QQ 触发登录：<br>
+            <b>情况 A</b>（QQ 显示登录界面）：直接点击「登录」按钮。<br>
+            <b>情况 B</b>（QQ 已自动登录显示聊天）：在 QQ 菜单选「退出账号」，返回登录界面后点登录——<b>不要关闭 QQ</b>。
           </div>
           <div id="s3-auto" style="display:none;font-size:13px;color:var(--mute);font-style:italic;margin-top:6px"></div>
         </div>
@@ -1012,7 +1087,7 @@ function applyPhase(ph, key) {
     setStepActive('s3')
     const desc = document.getElementById('s3-desc')
     if (desc) desc.style.display = 'none'
-    setS3Auto('✓ 断点已就绪 — 请在 QQ 中随便点一下（登录或任意聊天窗口）')
+    setS3Auto('✓ 断点已就绪 — 若 QQ 显示登录界面，点「登录」；若已自动登录，请退出账号后重新登录（不关闭 QQ）')
   }
   if (ph === 'done' && key) {
     extractedKey = key
