@@ -272,16 +272,65 @@ def _lldb_send(cmd):
     if _lldb and _lldb.poll() is None:
         _lldb.stdin.write(cmd+"\n"); _lldb.stdin.flush()
 
+def _on_attached():
+    """Called when lldb has confirmed QQ is attached. Auto-runs the full flow."""
+    if S["phase"] != "launching":
+        return
+    S["phase"] = "attached"
+    time.sleep(0.5)
+    _lldb_send("process continue")
+    S["phase"] = "running"
+    _log("[*] QQ 已启动，将自动设置断点...")
+    threading.Thread(target=_auto_setbp, daemon=True).start()
+
+def _auto_setbp():
+    """Interrupt QQ repeatedly until wrapper.node is loaded, then set breakpoint."""
+    # Attempt delays: first try at 1s, then quick retries
+    delays = [1.0, 0.8, 0.8, 1.0, 1.5, 2.0]
+    for i, delay in enumerate(delays):
+        time.sleep(delay)
+        if S["phase"] != "running":
+            return
+        _lldb_send("process interrupt")
+        time.sleep(1.2)
+        if S["phase"] != "running":
+            return
+        log_before = len(S["log"])
+        _lldb_send("qq-setbp")
+        time.sleep(0.6)
+        new_logs = " ".join(S["log"][log_before:])
+        if "断点已设置" in new_logs:
+            S["phase"] = "waiting"
+            _log("[*] 断点就绪！请在 QQ 中随便点击（登录按钮或任意聊天窗口），密钥自动显示")
+            _lldb_send("c")
+            return
+        # wrapper.node not loaded yet, keep going
+        _lldb_send("c")
+        if i < 2:
+            _log(f"[~] wrapper.node 未加载，继续等待... ({i+1}/{len(delays)})")
+    _log("[!] 自动设置断点失败（超时）。")
+    _log("[!] 如 QQ 已自动登录，请完全退出 QQ，再次点击「启动」")
+    S["phase"] = "signed"  # allow retry
+
+def _launch_watchdog():
+    """If lldb doesn't emit a recognized attach signal within 15s, force-advance."""
+    time.sleep(15)
+    if S["phase"] == "launching":
+        _log("[~] 未检测到 lldb 附加信号，强制继续（lldb 输出格式可能已变化）")
+        _on_attached()
+
 def _read_lldb():
     global _lldb
     for line in _lldb.stdout:
-        _log(line)
-        if "Process" in line and "stopped" in line and S["phase"]=="launching":
-            S["phase"]="attached"
-            time.sleep(0.4); _lldb_send("process continue"); S["phase"]="running"
+        _log(line.rstrip())
+        # lldb -n QQ -w outputs "Process X launched: ..." when it attaches.
+        # Older versions may also output "Process X stopped". Accept both.
+        if S["phase"] == "launching" and "Process" in line and (
+                "launched:" in line or "stopped" in line):
+            _on_attached()
         if "KEY    :" in line:
-            m=re.search(r"KEY\s+:\s+(.+)",line)
-            if m: S["key"]=m.group(1).strip(); S["phase"]="done"
+            m = re.search(r"KEY\s+:\s+(.+)", line)
+            if m: S["key"] = m.group(1).strip(); S["phase"] = "done"
 
 # ── API ────────────────────────────────────────────────────────────────────────
 
@@ -362,6 +411,7 @@ def launch():
         stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
         text=True,bufsize=1)
     threading.Thread(target=_read_lldb,daemon=True).start()
+    threading.Thread(target=_launch_watchdog,daemon=True).start()
     time.sleep(0.4)
     subprocess.Popen(["open","/Applications/QQ.app"])
     _log("[*] lldb 正在等待 QQ 启动...")
@@ -745,14 +795,11 @@ header p {
       <div class="step disabled" id="s3">
         <div class="step-num">3</div>
         <div class="step-body">
-          <div class="step-title">设置断点</div>
-          <div class="step-desc">
-            看到 QQ 登录界面（或聊天窗口）后点击下方按钮，工具会自动暂停 QQ、设置断点并继续。<br>
-            随后在 QQ 里<strong>点一下</strong>登录或任意聊天，密钥即出现。
+          <div class="step-title">等待密钥</div>
+          <div class="step-desc" id="s3-desc">
+            工具会自动设置断点，完成后请在 QQ 中随便点一下（登录按钮或任意聊天窗口），密钥自动显示。
           </div>
-          <button class="btn btn-jade" id="btn-trigger" onclick="doTrigger()" disabled>
-            已看到 QQ 界面，设置断点
-          </button>
+          <div id="s3-auto" style="display:none;font-size:13px;color:var(--mute);font-style:italic;margin-top:6px"></div>
         </div>
       </div>
 
@@ -901,12 +948,6 @@ async function doLaunch() {
   if (!r.ok) { alert(r.err); document.getElementById('btn-launch').disabled=false }
 }
 
-async function doTrigger() {
-  document.getElementById('btn-trigger').disabled = true
-  document.getElementById('btn-trigger').textContent = '正在设置断点...'
-  const r = await fetch('/api/trigger', {method:'POST'}).then(r=>r.json())
-  if (!r.ok) { alert(r.err); document.getElementById('btn-trigger').disabled=false }
-}
 
 // ── Poll status ────────────────────────────────────────────────────────────
 function startPoll() {
@@ -923,10 +964,14 @@ async function poll() {
   applyPhase(phase, r.key)
 }
 
+function setS3Auto(msg) {
+  const el = document.getElementById('s3-auto')
+  if (el) { el.style.display = ''; el.textContent = msg }
+}
+
 function applyPhase(ph, key) {
   if (ph === 'signed') {
     setStepDone('s1')
-    // 如果是启动时自动检测到的，更新描述文字
     const desc = document.getElementById('s1-desc')
     if (desc) desc.innerHTML = '✓ 已检测到 QQ 为 ad-hoc 签名，无需重新签名'
     document.getElementById('btn-sign').style.display = 'none'
@@ -934,21 +979,32 @@ function applyPhase(ph, key) {
     document.getElementById('btn-launch').disabled = false
   }
   if (ph === 'launching' || ph === 'attached') {
+    setStepDone('s1')
     setStepDone('s2')
+    setStepActive('s3')
+    setS3Auto('lldb 正在附加 QQ 进程...')
   }
   if (ph === 'running') {
+    setStepDone('s1')
+    setStepDone('s2')
     setStepActive('s3')
-    document.getElementById('btn-trigger').disabled = false
+    setS3Auto('QQ 已启动，正在等待断点设置...')
   }
-  if (ph === 'waiting' || ph === 'interrupting') {
-    document.getElementById('btn-trigger').textContent = '等待你点击 QQ 登录或聊天...'
+  if (ph === 'interrupting') {
+    setStepActive('s3')
+    setS3Auto('正在暂停 QQ、设置断点...')
+  }
+  if (ph === 'waiting') {
+    setStepActive('s3')
+    const desc = document.getElementById('s3-desc')
+    if (desc) desc.style.display = 'none'
+    setS3Auto('✓ 断点已就绪 — 请在 QQ 中随便点一下（登录或任意聊天窗口）')
   }
   if (ph === 'done' && key) {
     extractedKey = key
-    setStepDone('s3')
+    setStepDone('s1'); setStepDone('s2'); setStepDone('s3')
     const kd = document.getElementById('key-display')
-    kd.textContent = key
-    kd.className = 'key-val'
+    kd.textContent = key; kd.className = 'key-val'
     document.getElementById('btn-copy').style.display = ''
     document.getElementById('export-key').value = key
     clearInterval(pollTimer); pollTimer = null
