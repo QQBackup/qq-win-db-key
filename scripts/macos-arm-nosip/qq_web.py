@@ -140,7 +140,7 @@ def __lldb_init_module(debugger, internal_dict):
 
 def _extractor_path():
     """将内嵌的 extractor 脚本写到 /tmp，返回路径。"""
-    p = "/tmp/_qq_key_extractor.py"
+    p = "/tmp/qq_key_extractor.py"
     with open(p, "w") as f:
         f.write(_EXTRACTOR_SRC.lstrip())
     return p
