@@ -38,15 +38,19 @@ sudo codesign --force --deep --sign - /Applications/QQ.app
 
 ## 3. 下载脚本
 
-本教程配套两个脚本，位于仓库 `scripts/macos-arm-nosip/` 目录：
+本教程配套三个脚本，位于仓库 `scripts/macos-arm-nosip/` 目录：
 
 | 文件 | 用途 |
 |---|---|
+| `qq_web.py` | **一键 GUI 工具**（最推荐）：自动检测签名、备份数据库、提取密钥、导出聊天记录，全程点击操作 |
 | `find_key_func.py` | 独立 VA 分析工具（命令行打印地址） |
-| `qq_key_extractor.py` | lldb 自动化模块（全自动：自动设断点、自动打印密钥） |
+| `qq_key_extractor.py` | lldb 自动化模块（全自动：自动设断点、自动打印密钥）；**已内嵌在 `qq_web.py` 中**，单独使用时才需要下载 |
 
 ```bash
-# 把两个脚本下载到本地
+# 只需下载 qq_web.py 即可（推荐）
+curl -sO https://raw.githubusercontent.com/QQBackup/qq-win-db-key/master/scripts/macos-arm-nosip/qq_web.py
+
+# 若需要命令行脚本，额外下载：
 curl -sO https://raw.githubusercontent.com/QQBackup/qq-win-db-key/master/scripts/macos-arm-nosip/find_key_func.py
 curl -sO https://raw.githubusercontent.com/QQBackup/qq-win-db-key/master/scripts/macos-arm-nosip/qq_key_extractor.py
 ```
@@ -55,7 +59,25 @@ curl -sO https://raw.githubusercontent.com/QQBackup/qq-win-db-key/master/scripts
 
 ## 4. 提取密钥
 
-### 方式 A：全自动（推荐）
+### 方式 0：GUI 一键工具（最推荐）
+
+下载 `qq_web.py` 后，只需一条命令：
+
+```bash
+pip3 install flask && python3 qq_web.py
+```
+
+浏览器自动打开 `http://127.0.0.1:8899`，按页面步骤操作：
+
+1. **第一步 - 重新签名**：若 QQ 已是 ad-hoc 签名则自动跳过；否则点击按钮，工具会先备份数据库再重新签名。
+2. **第二步 - 提取密钥**：点击"启动 QQ + 注入 lldb"，然后在 QQ 界面点击登录（或随便点一条聊天消息），密钥自动显示。
+3. **第三步 - 导出数据**：填写导出路径，一键导出为 HTML 聊天记录。
+
+> **注意**：`qq_key_extractor.py` 已内嵌在 `qq_web.py` 中，无需单独下载。
+
+---
+
+### 方式 A：命令行全自动
 
 使用 `qq_key_extractor.py`，全程只需 5 条命令，密钥自动打印。
 
@@ -89,7 +111,7 @@ open /Applications/QQ.app
 (lldb) c                         ← 继续运行
 ```
 
-然后在 QQ 界面**点击登录**，密钥自动打印：
+然后在 QQ 界面**点击登录**（或点击任意聊天消息），密钥自动打印：
 
 ```
 ==============================================================
