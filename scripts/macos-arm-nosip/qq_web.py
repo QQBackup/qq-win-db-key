@@ -16,7 +16,7 @@ WRAPPER = "/Applications/QQ.app/Contents/Resources/app/wrapper.node"
 
 # qq_key_extractor.py 内嵌内容，运行时写到临时文件，用完自动清理
 _EXTRACTOR_SRC = r'''
-import lldb, os, struct
+import lldb, os, struct, threading
 
 _func_va = None
 WRAPPER = "/Applications/QQ.app/Contents/Resources/app/wrapper.node"
@@ -72,11 +72,43 @@ def _key_callback(frame, bp_loc, extra_args, internal_dict):
     if err.Success():
         try: key = raw.decode("ascii")
         except: key = raw.hex()
-        print(f"\nKEY    : {key}")
-        print(f"LENGTH : {x3.GetValueAsUnsigned()}")
-    process.Continue(); return False
+        print(f"\nKEY    : {key}", flush=True)
+        print(f"LENGTH : {x3.GetValueAsUnsigned()}", flush=True)
+    return False  # don't stop; process continues automatically
+
+def _watch_for_wrapper(debugger):
+    """Background thread: listen for wrapper.node module-load event, then set bp."""
+    global _func_va
+    target = debugger.GetSelectedTarget()
+    if not target.IsValid():
+        print("[qq-key] ERROR: no valid target", flush=True)
+        return
+    # Subscribe to module-load events on the target broadcaster
+    listener = lldb.SBListener("qq_wrapper_watcher")
+    target.GetBroadcaster().AddListener(listener, lldb.SBTarget.eBroadcastBitModulesLoaded)
+    event = lldb.SBEvent()
+    for _ in range(180):  # 90s timeout (180 x 0.5s)
+        if not listener.WaitForEvent(1, event):
+            continue
+        num = lldb.SBTarget.GetNumModulesFromEvent(event)
+        for i in range(num):
+            mod = lldb.SBTarget.GetModuleAtIndexFromEvent(i, event)
+            if mod.GetFileSpec().GetFilename() != "wrapper.node":
+                continue
+            load_addr = mod.GetObjectFileHeaderAddress().GetLoadAddress(target)
+            if load_addr == lldb.LLDB_INVALID_ADDRESS:
+                continue
+            bp_addr = load_addr + _func_va
+            # Set breakpoint while process is running — lldb handles patching atomically
+            bp = target.BreakpointCreateByAddress(bp_addr)
+            bp.SetScriptCallbackFunction("qq_key_extractor._key_callback")
+            print(f"\n[qq-key] OK wrapper.node loaded, bp=0x{bp_addr:x} (id={bp.GetID()})", flush=True)
+            print("[qq-key] 请在 QQ 随便点击（登录按钮或任意聊天），密钥自动显示", flush=True)
+            return
+    print("[qq-key] ERROR: wrapper.node 加载超时（90s）", flush=True)
 
 def set_breakpoint(debugger, command, result, internal_dict):
+    """Manual fallback: qq-setbp"""
     global _func_va
     if _func_va is None: result.SetError("_func_va not set"); return
     target = debugger.GetSelectedTarget()
@@ -86,22 +118,24 @@ def set_breakpoint(debugger, command, result, internal_dict):
         load_addr = mod.GetObjectFileHeaderAddress().GetLoadAddress(target)
         if load_addr == lldb.LLDB_INVALID_ADDRESS: continue
         bp_addr = load_addr + _func_va
-        print(f"\n[qq-key] slide=0x{load_addr:x}  bp=0x{bp_addr:x}")
         bp = target.BreakpointCreateByAddress(bp_addr)
         bp.SetScriptCallbackFunction("qq_key_extractor._key_callback")
-        print(f"[qq-key] 断点已设置 (id={bp.GetID()})，请在 QQ 点击登录或打开聊天")
+        print(f"[qq-key] 断点已设置 (id={bp.GetID()}) bp=0x{bp_addr:x}", flush=True)
         return
     result.SetError("wrapper.node not loaded yet")
 
 def __lldb_init_module(debugger, internal_dict):
     global _func_va
-    print("\n[qq-key] 分析 wrapper.node ...")
+    print("\n[qq-key] 分析 wrapper.node ...", flush=True)
     va = _find_func_va(WRAPPER)
-    if va is None: print("[qq-key] ERROR: 未能定位函数"); return
+    if va is None: print("[qq-key] ERROR: 未能定位函数", flush=True); return
     _func_va = va
-    print(f"[qq-key] VA=0x{va:x}")
+    print(f"[qq-key] VA=0x{va:x}", flush=True)
     debugger.HandleCommand("command script add -f qq_key_extractor.set_breakpoint qq-setbp")
-    print("[qq-key] 步骤: process continue → 等登录界面 → Ctrl-C → qq-setbp → c → 点登录")
+    # Start background thread to watch for wrapper.node module-load event
+    t = threading.Thread(target=_watch_for_wrapper, args=(debugger,), daemon=True)
+    t.start()
+    print("[qq-key] 自动监听 wrapper.node 加载中，无需手动操作", flush=True)
 '''
 
 def _extractor_path():
@@ -273,61 +307,40 @@ def _lldb_send(cmd):
         _lldb.stdin.write(cmd+"\n"); _lldb.stdin.flush()
 
 def _on_attached():
-    """Called when lldb has confirmed QQ is attached. Auto-runs the full flow."""
+    """Called when QQ process stops at initial attach. Don't continue yet — wait for script."""
     if S["phase"] != "launching":
         return
     S["phase"] = "attached"
-    time.sleep(0.5)
-    _lldb_send("process continue")
-    S["phase"] = "running"
-    _log("[*] QQ 已启动，将自动设置断点...")
-    threading.Thread(target=_auto_setbp, daemon=True).start()
-
-def _auto_setbp():
-    """Interrupt QQ repeatedly until wrapper.node is loaded, then set breakpoint."""
-    # Attempt delays: first try at 1s, then quick retries
-    delays = [1.0, 0.8, 0.8, 1.0, 1.5, 2.0]
-    for i, delay in enumerate(delays):
-        time.sleep(delay)
-        if S["phase"] != "running":
-            return
-        _lldb_send("process interrupt")
-        time.sleep(1.2)
-        if S["phase"] != "running":
-            return
-        log_before = len(S["log"])
-        _lldb_send("qq-setbp")
-        time.sleep(0.6)
-        new_logs = " ".join(S["log"][log_before:])
-        if "断点已设置" in new_logs:
-            S["phase"] = "waiting"
-            _log("[*] 断点就绪！请在 QQ 中随便点击（登录按钮或任意聊天窗口），密钥自动显示")
-            _lldb_send("c")
-            return
-        # wrapper.node not loaded yet, keep going
-        _lldb_send("c")
-        if i < 2:
-            _log(f"[~] wrapper.node 未加载，继续等待... ({i+1}/{len(delays)})")
-    _log("[!] 自动设置断点失败（超时）。")
-    _log("[!] 如 QQ 已自动登录，请完全退出 QQ，再次点击「启动」")
-    S["phase"] = "signed"  # allow retry
+    _log("[*] QQ 已附加，等待脚本加载并注册 wrapper.node 监听...")
 
 def _launch_watchdog():
-    """If lldb doesn't emit a recognized attach signal within 15s, force-advance."""
-    time.sleep(15)
+    """Fallback: if phase stays 'launching' for 25s, force-advance."""
+    time.sleep(25)
     if S["phase"] == "launching":
-        _log("[~] 未检测到 lldb 附加信号，强制继续（lldb 输出格式可能已变化）")
-        _on_attached()
+        _log("[~] 未检测到 lldb 附加信号，强制继续...")
+        S["phase"] = "attached"
+        time.sleep(0.3)
+        _lldb_send("process continue")
+        S["phase"] = "running"
 
 def _read_lldb():
     global _lldb
     for line in _lldb.stdout:
         _log(line.rstrip())
-        # lldb -n QQ -w outputs "Process X launched: ..." when it attaches.
-        # Older versions may also output "Process X stopped". Accept both.
+        # Detect process attach ("Process X stopped" or "Process X launched:")
         if S["phase"] == "launching" and "Process" in line and (
                 "launched:" in line or "stopped" in line):
             _on_attached()
+        # Script fully loaded & SBListener registered → NOW safe to send process continue
+        if "[qq-key] 自动监听" in line and S["phase"] == "attached":
+            time.sleep(0.2)
+            _lldb_send("process continue")
+            S["phase"] = "running"
+            _log("[*] QQ 运行中，等待 wrapper.node 加载（断点将自动设置，无需干预）...")
+        # Background thread inside lldb script set the breakpoint
+        if "[qq-key] OK wrapper.node" in line and S["phase"] == "running":
+            S["phase"] = "waiting"
+            _log("[*] 断点就绪！请在 QQ 中随便点击（登录按钮或任意聊天），密钥自动显示")
         if "KEY    :" in line:
             m = re.search(r"KEY\s+:\s+(.+)", line)
             if m: S["key"] = m.group(1).strip(); S["phase"] = "done"
