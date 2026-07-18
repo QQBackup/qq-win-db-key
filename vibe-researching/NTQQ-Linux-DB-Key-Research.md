@@ -3,7 +3,8 @@
 **完全由 AI 生成，仅供参考！**
 
 分析 js 部分请转： https://github.com/xqy2006/jsc2js
-实际调用协议请转： https://napneko.github.io
+实际调用协议请转： https://napneko.github.io / https://github.com/SnowLuma/SnowLuma
+基于此协议的简单易用工具请转： https://github.com/H3CoF6/WeQ
 
 > **状态**：研究进行中，结论基于动态调试与静态分析，偏移量随 QQ 版本变化。  
 > **平台**：Linux NTQQ（`wrapper.node`） 3.2.28-48517, Arch Linux, bwrap 容器。
@@ -14,7 +15,7 @@
 
 ## 声明
 
-本文档仅供学习交流，记录协议与实现层面的观察，**不包含真实账号的 UIN、UID、MachineGUID、enc_hex、a2_key 或数据库明文密码**。公开复现时请自行在隔离环境抓取样本，勿将个人密钥写入 issue/PR。
+本文档仅供学习交流，记录协议与实现层面的观察，**不包含真实账号的 UIN、UID、MachineGUID、key_meta、a2_key 或数据库明文密码**。公开复现时请自行在隔离环境抓取样本，勿将个人密钥写入 issue/PR。
 
 ---
 
@@ -61,9 +62,11 @@ NTQQ 至少存在两条与数据库相关的密钥逻辑：
 
 ## 3. 三个核心概念
 
-### 3.1 `enc_hex` — DB 扩展头 field2
+### 3.1 `key_meta` — DB 扩展头 field2
 
-每个 NT 数据库文件带有自定义扩展头（protobuf），其中 **field2** 存一段 **128 个十六进制字符**（= 64 字节密文的 ASCII hex 表示）。
+每个 NT 数据库文件带有自定义扩展头（protobuf，约 1024 字节），其中 **field2** 存一段 **128 个十六进制字符**（= 64 字节的 ASCII hex 表示）。
+
+QQ 本体称该字段为 **`key_meta`**：它是数据库的**唯一标识**，也是向服务器换取明文 `db_key` 的核心凭证。
 
 示例形态（**虚构，非真实样本**）：
 
@@ -75,17 +78,21 @@ a8051982....<共 128 个 hex 字符>....df2ebb
 
 - 写在**磁盘 DB 文件**里，离线可读
 - 对**同一账号**通常固定（换登录会话不变）
-- **不是** SQLCipher 密码本身，而是发给服务器时的「加密描述 / 订单号」
+- **不是** SQLCipher 密码本身，而是发给服务器时的「数据库标识 / 兑换凭证」
+- 持有 `key_meta` 即可主动发起解密请求换取当前账号对应库的明文密钥（见 §3.2、§3.3）
 
-### 3.2 `a2_key` — 当次登录会话鉴权 blob
+### 3.2 `a2_key` — 当次登录会话鉴权 blob（可选）
 
-登录成功后，session 配置里出现 **144 字符 hex**（经 `HexDecode` 变为 **72 字节二进制**），写入 `MSFService+0x210`，并在 OIDB 请求 field7 中携带。
+登录成功后，session 配置里出现 **144 字符 hex**（经 `HexDecode` 变为 **72 字节二进制**），写入 `MSFService+0x210`，并在 OIDB 请求 field7 中**可能**携带。
 
 特性：
 
 - **每次登录变化**（两次登录前缀完全不同）
 - 不在 DB 文件明文里；MMKV 磁盘上也为加密存储
-- 单独持有无法解密数据库；必须与 `enc_hex` 一起提交给 MSF
+- 单独持有无法解密数据库
+- **对 `0xcde` SubCommand 2（RequestDecryptKey）而言是可选参数**：只要拥有 `key_meta`，即可在已登录会话中主动触发请求并成功获取当前账号对应数据库的明文密钥；不带鉴权令牌也可正常返回 `db_key`（用其它账号的 `key_meta` 则会报错，如 1006）
+
+猜测：登录早期请求获取密钥时带上 `a2_key`，是因为鉴权流程尚未完成；登录完成后，`a2_key` 便只是可选参数。
 
 来源链（观察到的上游）：
 
@@ -93,36 +100,37 @@ a8051982....<共 128 个 hex 字符>....df2ebb
 登录 ECDH 握手
   → session config 写入（config+0xF0）
   → SessionInit：hex → bytes → MSFService+0x210
-  → BuildOidbReq field7
+  → BuildOidbReq field7（可选携带）
 ```
 
 `UpdateConfig`（`session_base.cpp`）与 `msf_session_impl` 疑似写入点，但 attach 已登录进程时可能已错过；需**重启 QQ 后尽早 hook**。
 
-### 3.3 MSF / OIDB `3294/2` 响应
+### 3.3 MSF / OIDB `0xcde` — 加解密密钥请求
 
-客户端构造 RPC，服务名形如：
+实际用于获取数据库密钥的 OIDB 指令码为 **`0xcde`（decimal 3294）**：
 
-```
-OidbSvcTrpcTcp.0xce6_2
-```
+| 指令 | 服务名形态 | 客户端调用 | 时机 | 返回 |
+|------|------------|------------|------|------|
+| `0xcde` SubCommand **1** | `OidbSvcTrpcTcp.0xcde_1` | `RequestEncryptKey` | 数据库初始化 / 建库 | `key_meta` + `db_key` |
+| `0xcde` SubCommand **2** | `OidbSvcTrpcTcp.0xcde_2` | `RequestDecryptKey` | 登录 / 开库解密 | `db_key` |
 
-即 **cmd = 3294 (0xCE6)**，**subcmd = 2**。
+> **更正**：早期笔记曾将服务名记为 `OidbSvcTrpcTcp.0xce6_2`。`3294 = 0xCDE`，正确指令码为 **`0xcde`**，不是 `0xce6`（0xCE6 = 3302）。
 
-请求体（protobuf，约 228 字节量级）包含：
+解密请求体（protobuf，约 228 字节量级）典型包含：
 
-- 内层 payload：`enc_hex` 的 ASCII 编码
-- field7：`72 字节 a2_key` + 时间戳等 varint
+- 内层 payload：`key_meta` 的 ASCII 编码
+- field7：`72 字节 a2_key` + 时间戳等 varint（**可选**；SnowLuma 实测可不带）
 
 服务器校验通过后，回调 `RequestDecryptKey_cb`，返回：
 
 | 字段 | 典型值 |
 |------|--------|
 | `meta` | 空字符串 |
-| `key` | 16 字节 ASCII（账号固定） |
+| `key` / `db_key` | 16 字节 ASCII（账号固定） |
 
 随后 `SetKeyPair` → SQLCipher 使用该 key 开库。
 
-**离线含义**：仅有 `enc_hex`（从 DB 头读取）不够；还需要**当次** `a2_key` 并能完成 MSF 请求（或完整复现协议得到同等响应）。
+**离线含义**：仅有 `key_meta`（从 DB 头读取）仍**不能**本地算出 SQLCipher 密码；但在**已登录、能发 OIDB** 的前提下，只需 `key_meta` 即可主动请求换取明文 key，**不必**再依赖当次 `a2_key`。
 
 ---
 
@@ -133,22 +141,22 @@ MSF OnConnected / 会话就绪
   │
   ├─ requestDBKey (NTWrapperSession)
   │     输入：uid（如 u_xxxxxxxx）、nt_db 目录
-  │     扫描各 DB 头 field2 → enc_hex
+  │     扫描各 DB 头 field2 → key_meta
   │
   ├─ RequestDecryptKey (msf_service)
-  │     ├─ EncodeReqDecryptKey：enc_hex → 内层 protobuf（~134B）
-  │     └─ BuildOidbReq (cmd=3294, sub=2)
+  │     ├─ EncodeReqDecryptKey：key_meta → 内层 protobuf（~134B）
+  │     └─ BuildOidbReq (cmd=0xcde / 3294, sub=2)
   │           ├─ payload：内层 protobuf
-  │           └─ field7：MSFService+0x210 的 72B a2_key
+  │           └─ field7：MSFService+0x210 的 72B a2_key（可选）
   │
-  ├─ MSFSign → OidbSvcTrpcTcp.0xce6_2 发包
+  ├─ MSFSign → OidbSvcTrpcTcp.0xcde_2 发包
   │
   └─ RequestDecryptKey_cb
         meta="" , key=<16B ASCII>
         → SetKeyPair → key_mgr → SQLCipher
 ```
 
-加密方向（建库 / 重写 field2）对称存在 `RequestEncryptKey` / `RequestEncryptKey_cb`，删除 DB 触发重建时可观察 `InitDbHeader`。
+加密方向（建库 / 重写 field2）对称存在 `RequestEncryptKey` / `RequestEncryptKey_cb`（`0xcde` SubCommand 1），删除 DB 触发重建时可观察 `InitDbHeader`；初始化时返回 `key_meta` 与 `db_key`，`key_meta` 写入数据库扩展头。
 
 ---
 
@@ -159,7 +167,7 @@ MSF OnConnected / 会话就绪
 | 偏移 | 长度/形态 | 含义 |
 |------|-----------|------|
 | `+0x58` (88) | 字符串 | `nt_data` 目录路径 |
-| `+0xF0` (240) | 144 hex → 72B | `a2_key`，OIDB 鉴权 blob |
+| `+0xF0` (240) | 144 hex → 72B | `a2_key`，OIDB 鉴权 blob（解密请求可选） |
 | `+0x108` (264) | 176 hex → 88B | `sec_material`，≠ DB field2 |
 | `+0x120` (288) | hex → ASCII | QUA 等设备标识串 |
 
@@ -189,16 +197,16 @@ __int64 HexDecode(__int64 out_smallstr, const char *hex_ptr, size_t hex_ascii_le
 
 ```
 外层 OIDB 头
-  field cmd    = 3294
-  field subcmd = 2
+  field cmd    = 3294 (0xcde)
+  field subcmd = 2          // DecryptKey；初始化为 1 (EncryptKey)
   field payload = <EncodeReqDecryptKey 输出>
-      内层约 134B，主体为 enc_hex 的 ASCII
-  field sign_block (tag 0x3a ...)
+      内层约 134B，主体为 key_meta 的 ASCII
+  field sign_block (tag 0x3a ...)   // 可选
       嵌套 field：72 字节 a2_key 二进制
       + 时间戳 varint 等
 ```
 
-抓包/日志里可见模式：`3a 52 08 08 12 48 <72 bytes> ...`
+抓包/日志里可见模式（带鉴权时）：`3a 52 08 08 12 48 <72 bytes> ...`
 
 ---
 
@@ -218,7 +226,7 @@ __int64 HexDecode(__int64 out_smallstr, const char *hex_ptr, size_t hex_ascii_le
 - `trpc.login.ecdh.EcdhService.SsoNTLoginEasyLogin`
 - `trpc.login.ecdh.EcdhService.SsoKeyExchange`
 - `trpc.o3.ecdh_access.EcdhAccess.SsoEstablishShareKey`
-- `OidbSvcTrpcTcp.0xce6_2`（解密 key 请求签名）
+- `OidbSvcTrpcTcp.0xcde_2`（解密 key 请求签名）
 
 大量 `trpc.o3.report.Report.SsoReport` 为遥测噪音，hook 时应过滤。
 
@@ -251,13 +259,13 @@ timeout 60 frida -p "$PID" -l ./qqnt-dbkey-hook.js
 
 | 偏移 | 符号（IDA） | 作用 |
 |------|-------------|------|
-| `0x4954000` | `InitDbHeader` | field2 写入（建库） |
+| `0x4954000` | `InitDbHeader` | field2（`key_meta`）写入（建库） |
 | `0x4954350` | `SetExtHeader` | DB 路径 |
 | `0x243EFF0` | `RequestDecryptKey_cb` | **明文 key 回调** |
-| `0x243E650` | `RequestEncryptKey_cb` | 加密方向 |
+| `0x243E650` | `RequestEncryptKey_cb` | 加密方向（`0xcde` sub=1） |
 | `0x2430160` | `requestDBKey` | uid、db 目录 |
-| `0x2DDE920` | `RequestDecryptKey` | MSF 发起点 |
-| `0x2DFA1C0` | `EncodeReqDecryptKey` | enc_hex 编码 |
+| `0x2DDE920` | `RequestDecryptKey` | MSF 发起点（`0xcde` sub=2） |
+| `0x2DFA1C0` | `EncodeReqDecryptKey` | `key_meta` 编码 |
 | `0x2DDD7F0` | `BuildOidbReq` | 完整 OIDB body |
 | `0x2DD6FA0` | `SessionInit` | a2_key → MSFService+0x210 |
 | `0x2DD1900` | `MsfSecuritySignInit` | MMKV 初始化 |
@@ -276,10 +284,12 @@ timeout 60 frida -p "$PID" -l ./qqnt-dbkey-hook.js
 
 | 命题 | 结论 |
 |------|------|
-| 21 个 PS 库的明文 key 存在本地文件吗？ | **否**（需 MSF 返回） |
-| `enc_hex` 能否单独离线解密？ | **否** |
+| 21 个 PS 库的明文 key 存在本地文件吗？ | **否**（需 MSF / OIDB `0xcde` 返回） |
+| `key_meta` 能否单独离线算出密码？ | **否**（仍需在线 OIDB） |
+| 仅凭 `key_meta` 能否主动请求换 key？ | **能**（登录完成后 `a2_key` 可选） |
 | 明文 key 是否随登录变化？ | **否**（同账号多次相同） |
 | `a2_key` 是否随登录变化？ | **是** |
+| 解密请求是否强制依赖 `a2_key`？ | **否**（可选；登录早期可能带上） |
 | Linux field2 走 `EncryptDataOtherOS`/MachineGUID 吗？ | **否**（与 Windows 不同） |
 | 已有 DB 会重写 field2 吗？ | 通常**否**（`InitDbHeader` 多在新建库时） |
 | `RequestDecryptKey_cb` 的 meta | 通常为空 |
@@ -291,16 +301,17 @@ timeout 60 frida -p "$PID" -l ./qqnt-dbkey-hook.js
 
 **已排除**
 
-- 纯本地从 `enc_hex` 反推 SQLCipher 密码（路径 A）
+- 纯本地从 `key_meta` 反推 SQLCipher 密码（路径 A）
 - `sec_material`（config+0x108）等于 DB field2
+- 解密请求必须携带 `a2_key`（已由协议复现证伪）
 
 **待继续**
 
 1. `a2_key` 写入链：`UpdateConfig` / `msf_session_impl` 精确调用点
 2. MMKV `nt_mmkv_o3` 解密后是否缓存 ECDH 材料
-3. 用抓到的 `out_vec_raw` **离线复现** OIDB 3294/2（是否必须在线 MSF）
+3. ~~用抓到的 `out_vec_raw` 离线复现 OIDB~~ → 已由 SnowLuma 以 `0xcde` sub=2 + 仅 `key_meta` 主动请求验证；可继续对照客户端 `BuildOidbReq` 字段细节
 4. 路径 B：`Login.db` + `DecryptDataOtherOS` + MachineGUID 算法对齐
-5. 加密方向：删库重建触发 `InitDbHeader`，观察 field2 生成
+5. 加密方向：删库重建触发 `InitDbHeader`，观察 `key_meta` 生成（`0xcde` sub=1）
 
 ---
 
@@ -308,7 +319,7 @@ timeout 60 frida -p "$PID" -l ./qqnt-dbkey-hook.js
 
 本仓库 [教程 - NTQQ (Linux).md](../教程%20-%20NTQQ%20(Linux).md) 介绍了内存搜索、GDB、第三方 nt-hook 等拿 key 的方法。本文档补充的是**密钥在协议层的来源**，解释为何「只有 DB 文件」往往不够，并为不愿 hook SQLite 的研究者提供另一条取证路径。
 
-若目标仅是**打开自己的库**，运行时 hook 回调拿 16 字节 key 仍是最短路径；若目标是**归档/离线解密**，需面对 MSF 依赖或转攻 `Login.db` 本地路径。
+若目标仅是**打开自己的库**，运行时 hook 回调拿 16 字节 key 仍是最短路径；若目标是**归档/离线解密**，需面对 MSF/OIDB 依赖或转攻 `Login.db` 本地路径。在已登录会话中，亦可仅凭 DB 头中的 `key_meta` 主动发 `0xcde_2` 换取 key（见 §12 SnowLuma 实现）。
 
 ---
 
@@ -316,8 +327,10 @@ timeout 60 frida -p "$PID" -l ./qqnt-dbkey-hook.js
 
 - 本仓库：[基础教程 - NTQQ 解密数据库](../基础教程%20-%20NTQQ%20解密数据库.md)
 - 相关项目：[msojocs/nt-hook](https://github.com/msojocs/nt-hook)
+- **工程验证**：[SnowLuma PR #69 — Request decrypt database key](https://github.com/SnowLuma/SnowLuma/pull/69)（仅依赖 `key_meta` 主动请求 `0xcde` sub=2）
+  - 实现：[packages/protocol/src/oidb-services/misc/request-decrypt-key.ts](https://github.com/SnowLuma/SnowLuma/blob/main/packages/protocol/src/oidb-services/misc/request-decrypt-key.ts)
 - 工具：Frida、IDA Pro / Ghidra
 
 ---
 
-*文档版本：2026-06-05 · 研究笔记，随 QQ 更新可能失效*
+*文档版本：2026-07-18 · 研究笔记，随 QQ 更新可能失效*
