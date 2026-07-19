@@ -5,6 +5,7 @@ import platform
 import os
 import functools
 import subprocess
+from pathlib import Path
 
 # OPTIONS
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     print(
         """Termux 环境具体命令：
     sudo friendly # 重命名后的 frida-server
-    python android_hook.py
+    python android_get_backup_key.py
     """
     )
 
@@ -70,7 +71,8 @@ if __name__ == "__main__":
         )
     except:
         running = False
-    with open("android_get_backup_key.js", "rb") as f:
+    script_path = Path(__file__).resolve().with_name("android_get_backup_key.js")
+    with script_path.open("rb") as f:
         jscode1 = f.read().decode()
     jscode1 = jscode1.replace("__single_function__parameter__", funcident[sys.argv[1]])
     if running:

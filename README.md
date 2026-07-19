@@ -7,7 +7,12 @@ QQ Windows/NTQQ 相关数据库密钥提取脚本与辅助源码。
 ## 内容范围
 
 - 根目录：各平台密钥提取、数据库导出和重加密脚本。
-- `scripts/`：可复用的辅助脚本和研究配套代码。
+- `scripts/android/`：Android QQ/TIM 的 Frida 和密钥提取脚本。
+- `scripts/ios/`：iOS QQ 的 Frida 脚本。
+- `scripts/linux/`：Linux NTQQ 的密钥提取脚本和研究配套 hook。
+- `scripts/macos/arm-nosip/`：macOS ARM（无需关闭 SIP）的提取工具。
+- `scripts/windows/ntqq/`：Windows NTQQ 的密钥提取脚本。
+- `scripts/windows/pcqq/`：旧版 PCQQ 的密钥提取、导出和重加密工具。
 
 脚本通常需要根据 QQ 版本、系统环境和本地安装情况调整。使用前请先审查代码并备份数据。
 
