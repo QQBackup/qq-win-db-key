@@ -18,18 +18,21 @@ WRAPPER = "/Applications/QQ.app/Contents/Resources/app/wrapper.node"
 _EXTRACTOR_SRC = r'''
 import lldb, os, struct, threading, time
 
-_func_va = None
+_va_cache = {}  # wrapper.node 路径 → VA；QQ 热更新后加载的是 versions/<版本>/ 下的 wrapper.node
 WRAPPER = "/Applications/QQ.app/Contents/Resources/app/wrapper.node"
+LOGIN_DB_KEY = "BD156D6710D54D8782F4"  # login.db 的固定 key（全平台相同），不是聊天记录的 key
 
 def _find_func_va(path):
     with open(path, "rb") as f: data = f.read()
-    if struct.unpack(">I", data[:4])[0] != 0xCAFEBABE: return None
-    narch = struct.unpack(">I", data[4:8])[0]
     arm64 = None
-    for i in range(narch):
-        base = 8 + i * 20
-        if struct.unpack(">i", data[base:base+4])[0] == 0x0100000C:
-            arm64 = struct.unpack(">I", data[base+8:base+12])[0]; break
+    if struct.unpack(">I", data[:4])[0] == 0xCAFEBABE:  # fat（安装目录）
+        narch = struct.unpack(">I", data[4:8])[0]
+        for i in range(narch):
+            base = 8 + i * 20
+            if struct.unpack(">i", data[base:base+4])[0] == 0x0100000C:
+                arm64 = struct.unpack(">I", data[base+8:base+12])[0]; break
+    elif struct.unpack("<II", data[:8]) == (0xFEEDFACF, 0x0100000C):  # 单架构 arm64（热更新目录）
+        arm64 = 0
     if arm64 is None: return None
     sl = data[arm64:]; off = 32; tv = tf = ts = 0
     for _ in range(struct.unpack("<I", sl[16:20])[0]):
@@ -63,6 +66,10 @@ def _find_func_va(path):
                         return tv+pos
     return None
 
+def _va_for(path):
+    if path not in _va_cache: _va_cache[path] = _find_func_va(path)
+    return _va_cache[path]
+
 def _key_callback(frame, bp_loc, extra_args, internal_dict):
     process = frame.GetThread().GetProcess()
     x2 = frame.FindRegister("x2"); x3 = frame.FindRegister("x3")
@@ -72,22 +79,27 @@ def _key_callback(frame, bp_loc, extra_args, internal_dict):
     if err.Success():
         try: key = raw.decode("ascii")
         except: key = raw.hex()
+        if key == LOGIN_DB_KEY:
+            print("\n[qq-key] 命中 login.db 的固定 key（不是聊天记录的 key），跳过，继续等待...", flush=True)
+            return False
         with open("/tmp/qq_key_result.txt", "w") as f: f.write(key)
         print(f"\nKEY    : {key}", flush=True)
         print(f"LENGTH : {x3.GetValueAsUnsigned()}", flush=True)
     return False  # don't stop; process continues automatically
 
 def set_breakpoint(debugger, command, result, internal_dict):
-    """qq-setbp: set bp on nt_sqlite3_key_v2 in already-loaded wrapper.node"""
-    global _func_va
-    if _func_va is None: result.SetError("VA not computed"); return
+    """qq-setbp: set bp on nt_sqlite3_key_v2 in already-loaded wrapper.node（VA 按实际加载的文件计算）"""
     target = debugger.GetSelectedTarget()
     for i in range(target.GetNumModules()):
         mod = target.GetModuleAtIndex(i)
         if mod.GetFileSpec().GetFilename() != "wrapper.node": continue
         load_addr = mod.GetObjectFileHeaderAddress().GetLoadAddress(target)
         if load_addr == lldb.LLDB_INVALID_ADDRESS: continue
-        bp_addr = load_addr + _func_va
+        path = mod.GetFileSpec().fullpath
+        va = _va_for(path)
+        if va is None: result.SetError(f"未能在 {path} 中定位函数"); return
+        print(f"\n[qq-key] wrapper.node: {path} VA=0x{va:x}", flush=True)
+        bp_addr = load_addr + va
         bp = target.BreakpointCreateByAddress(bp_addr)
         bp.SetScriptCallbackFunction("qq_key_extractor._key_callback")
         with open("/tmp/qq_bp_set.txt", "w") as f: f.write(f"0x{bp_addr:x}")
@@ -96,14 +108,12 @@ def set_breakpoint(debugger, command, result, internal_dict):
     result.SetError("wrapper.node not in module list")
 
 def __lldb_init_module(debugger, internal_dict):
-    global _func_va
     print("\n[qq-key] 分析 wrapper.node ...", flush=True)
-    va = _find_func_va(WRAPPER)
-    if va is None: print("[qq-key] ERROR: 未能定位函数", flush=True); return
-    _func_va = va
-    print(f"[qq-key] VA=0x{va:x}", flush=True)
+    va = _va_for(WRAPPER) if os.path.exists(WRAPPER) else None
+    if va is None: print("[qq-key] 安装目录的 wrapper.node 未能定位函数，qq-setbp 时按实际加载的文件计算", flush=True)
+    else: print(f"[qq-key] VA=0x{va:x}（安装目录；热更新后以实际加载的为准）", flush=True)
     debugger.HandleCommand("command script add -f qq_key_extractor.set_breakpoint qq-setbp")
-    with open("/tmp/qq_script_ready.txt", "w") as f: f.write(f"0x{va:x}")
+    with open("/tmp/qq_script_ready.txt", "w") as f: f.write(f"0x{va:x}" if va is not None else "")
     print("[qq-key] 就绪", flush=True)
 '''
 
@@ -133,12 +143,15 @@ _qq_pid = None   # PID of main QQ process (Contents/MacOS/QQ)
 
 def _find_va(path):
     with open(path, "rb") as f: data = f.read()
-    if struct.unpack(">I", data[:4])[0] != 0xCAFEBABE: raise ValueError("not fat binary")
-    narch = struct.unpack(">I", data[4:8])[0]
-    arm64 = next((struct.unpack(">I", data[8+i*20+8:8+i*20+12])[0]
-                  for i in range(narch)
-                  if struct.unpack(">i", data[8+i*20:8+i*20+4])[0] == 0x0100000C), None)
-    if arm64 is None: raise ValueError("no arm64 slice")
+    if struct.unpack(">I", data[:4])[0] == 0xCAFEBABE:  # fat（安装目录）
+        narch = struct.unpack(">I", data[4:8])[0]
+        arm64 = next((struct.unpack(">I", data[8+i*20+8:8+i*20+12])[0]
+                      for i in range(narch)
+                      if struct.unpack(">i", data[8+i*20:8+i*20+4])[0] == 0x0100000C), None)
+        if arm64 is None: raise ValueError("no arm64 slice")
+    elif struct.unpack("<II", data[:8]) == (0xFEEDFACF, 0x0100000C):  # 单架构 arm64（热更新目录）
+        arm64 = 0
+    else: raise ValueError("not an arm64 Mach-O")
     sl = data[arm64:]
     off = 32; tv = tf = ts = 0
     for _ in range(struct.unpack("<I", sl[16:20])[0]):
@@ -403,17 +416,26 @@ def status():
                     "log":S["log"][since:],"total":len(S["log"])})
 
 def _backup_db():
-    """备份 nt_msg.db，返回备份路径或 None。"""
-    hits = glob.glob(os.path.expanduser(
-        "~/Library/Application Support/QQ/nt_qq_*/nt_db/nt_msg.db"))
+    """备份所有账号的 nt_msg.db，返回备份路径（多个用逗号分隔）或 None。
+    重新签名前 QQ 还在沙盒里，数据库在 Containers 下；签名后才改用 Application Support。"""
+    hits = []
+    for pattern in (
+        "~/Library/Containers/com.tencent.qq/Data/Library/Application Support/QQ/nt_qq_*/nt_db/nt_msg.db",
+        "~/Library/Application Support/QQ/nt_qq_*/nt_db/nt_msg.db",
+    ):
+        hits += glob.glob(os.path.expanduser(pattern))
     if not hits:
         return None
     backup_dir = Path.home() / "qq-extract-backup"
     backup_dir.mkdir(exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    dest = backup_dir / f"nt_msg_{ts}.db"
-    shutil.copy2(hits[0], dest)
-    return str(dest)
+    dests = []
+    for i, src in enumerate(hits):
+        account = Path(src).parents[1].name  # nt_qq_<hash>
+        dest = backup_dir / f"nt_msg_{ts}_{i}_{account}.db"
+        shutil.copy2(src, dest)
+        dests.append(str(dest))
+    return ", ".join(dests)
 
 @app.route("/api/check-sign")
 def check_sign():
@@ -438,6 +460,8 @@ def sign():
         else:
             _log("[~] 未检测到数据库文件，跳过备份")
 
+        _log("[~] 注意：重新签名后 QQ 不再运行在沙盒里，会在 ~/Library/Application Support/QQ 新建数据目录；"
+             "之后提取到的 key 对应新目录里的数据库，原沙盒目录中的历史记录用这个 key 无法解密")
         _log("[*] 正在对 QQ 重新签名（会弹出系统密码框）...")
         r = subprocess.run(["osascript", "-e",
             'do shell script "codesign --remove-signature /Applications/QQ.app 2>/dev/null; '
@@ -459,7 +483,7 @@ def launch():
     script = _extractor_path()
     try:
         va=_find_va(WRAPPER)
-        _log(f"[+] nt_sqlite3_key_v2 VA: 0x{va:x}")
+        _log(f"[+] nt_sqlite3_key_v2 VA: 0x{va:x}（安装目录；QQ 热更新过的话，设断点时按实际加载的 wrapper.node 重新计算）")
     except Exception as e:
         return jsonify({"ok":False,"err":str(e)})
     # Clean up stale file signals from a previous run
